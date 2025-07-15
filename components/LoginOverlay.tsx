@@ -29,12 +29,21 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
   };
 
   const registerUser = async () => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
-    if (error) setMessage(error.message);
-    else setPhase("verify");
+    if (error) {
+      setMessage(error.message);
+    } else {
+      // No session indicates the user must confirm via email
+      if (!data.session) {
+        setMessage(
+          "Check your email for a confirmation link or code. If you received a magic link, follow it to verify your account."
+        );
+        setPhase("verify");
+      }
+    }
   };
 
   const verify = async () => {
@@ -43,7 +52,12 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
       token: code,
       type: "signup",
     });
-    if (error) setMessage(error.message);
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Email verified. You can now log in.");
+      setPhase("login");
+    }
   };
 
   const resetPassword = async () => {
