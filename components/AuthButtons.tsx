@@ -17,12 +17,16 @@ export default function AuthButtons() {
     await supabase.auth.signOut();
   };
 
-  if (user) {
-    return (
-      <button className="ml-4 border px-2" onClick={logout}>
-        Logout
+  const login = () => {
+    // Login overlay appears automatically when no user
+  };
+
+  return (
+    <>
+      {user && <span>{user.email}</span>}
+      <button className="border px-2" onClick={user ? logout : login}>
+        {user ? "Logout" : "Login"}
       </button>
-    );
-  }
-  return null;
+    </>
+  );
 }

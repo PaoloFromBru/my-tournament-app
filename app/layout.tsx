@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavSelect from "../components/NavSelect";
 import AuthButtons from "../components/AuthButtons";
+import LoginOverlay from "../components/LoginOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,18 +27,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <header className="p-4 flex items-center gap-4">
-          <a href="/" className="flex items-center gap-2 text-xl font-bold">
-            <img src="/babyfoot.svg" alt="Babyfoot" className="w-6 h-6" />
-            My Tournament App
-          </a>
-          <NavSelect />
-          <AuthButtons />
-        </header>
-        <main className="p-4">{children}</main>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <LoginOverlay>
+          <header className="p-4 flex flex-col">
+            <div className="flex items-center gap-4">
+              <a href="/" className="flex items-center gap-2 text-xl font-bold">
+                <img src="/babyfoot.svg" alt="Babyfoot" className="w-6 h-6" />
+                My Tournament App
+              </a>
+              <NavSelect />
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <AuthButtons />
+            </div>
+          </header>
+          <main className="p-4">{children}</main>
+        </LoginOverlay>
       </body>
     </html>
   );
