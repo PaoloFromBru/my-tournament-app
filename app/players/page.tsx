@@ -7,19 +7,31 @@ type Player = {
   name: string;
   offense: number;
   defense: number;
+  user_id: string;
 };
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [user, setUser] = useState<any>(null);
   const [name, setName] = useState("");
   const [offense, setOffense] = useState(0);
   const [defense, setDefense] = useState(0);
   const [editing, setEditing] = useState<number | null>(null);
+  const [skillEditing, setSkillEditing] = useState<number | null>(null);
+  const [skillOffense, setSkillOffense] = useState(0);
+  const [skillDefense, setSkillDefense] = useState(0);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from('players').select('*');
-      setPlayers(data || []);
+      const { data: userData } = await supabase.auth.getUser();
+      setUser(userData.user);
+      if (userData.user) {
+        const { data } = await supabase
+          .from('players')
+          .select('*')
+          .eq('user_id', userData.user.id);
+        setPlayers(data || []);
+      }
     };
     load();
   }, []);
@@ -32,15 +44,22 @@ export default function PlayersPage() {
   };
 
   const addOrUpdate = async () => {
+    if (!user) return;
     if (editing !== null) {
       await supabase
         .from('players')
         .update({ name, offense, defense })
-        .eq('id', editing);
+        .eq('id', editing)
+        .eq('user_id', user.id);
     } else {
-      await supabase.from('players').insert({ name, offense, defense });
+      await supabase
+        .from('players')
+        .insert({ name, offense, defense, user_id: user.id });
     }
-    const { data } = await supabase.from('players').select('*');
+    const { data } = await supabase
+      .from('players')
+      .select('*')
+      .eq('user_id', user.id);
     setPlayers(data || []);
     resetForm();
   };
@@ -50,6 +69,27 @@ export default function PlayersPage() {
     setOffense(p.offense);
     setDefense(p.defense);
     setEditing(p.id);
+  };
+
+  const editSkills = (p: Player) => {
+    setSkillOffense(p.offense);
+    setSkillDefense(p.defense);
+    setSkillEditing(p.id);
+  };
+
+  const updateSkills = async (id: number) => {
+    if (!user) return;
+    await supabase
+      .from('players')
+      .update({ offense: skillOffense, defense: skillDefense })
+      .eq('id', id)
+      .eq('user_id', user.id);
+    const { data } = await supabase
+      .from('players')
+      .select('*')
+      .eq('user_id', user.id);
+    setPlayers(data || []);
+    setSkillEditing(null);
   };
 
   return (
@@ -87,14 +127,41 @@ export default function PlayersPage() {
       </div>
       <ul className="space-y-1">
         {players.map((p) => (
-          <li key={p.id} className="flex gap-2 items-center">
-            <span>{p.name}</span>
-            <span className="text-sm text-gray-500">
-              O:{p.offense} D:{p.defense}
-            </span>
-            <button className="text-blue-600" onClick={() => edit(p)}>
-              Edit
-            </button>
+          <li key={p.id} className="flex flex-col gap-1 border-b pb-2">
+            <div className="flex gap-2 items-center">
+              <span>{p.name}</span>
+              <span className="text-sm text-gray-500">
+                O:{p.offense} D:{p.defense}
+              </span>
+              <button className="text-blue-600" onClick={() => edit(p)}>
+                Edit
+              </button>
+              <button className="text-blue-600" onClick={() => editSkills(p)}>
+                Change skills
+              </button>
+            </div>
+            {skillEditing === p.id && (
+              <div className="flex gap-2 mt-1 items-center">
+                <input
+                  type="number"
+                  className="border p-1 w-20"
+                  value={skillOffense}
+                  onChange={(e) => setSkillOffense(Number(e.target.value))}
+                />
+                <input
+                  type="number"
+                  className="border p-1 w-20"
+                  value={skillDefense}
+                  onChange={(e) => setSkillDefense(Number(e.target.value))}
+                />
+                <button className="border px-2" onClick={() => updateSkills(p.id)}>
+                  Save
+                </button>
+                <button className="border px-2" onClick={() => setSkillEditing(null)}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

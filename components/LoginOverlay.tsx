@@ -7,15 +7,21 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [phase, setPhase] = useState<"login" | "register" | "verify" | "reset">(
-    "login"
-  );
+  const [phase, setPhase] =
+    useState<"login" | "register" | "verify" | "reset" | "updatePassword">(
+      "login"
+    );
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setUser(null);
+        setPhase("updatePassword");
+      } else {
+        setUser(session?.user ?? null);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -64,6 +70,17 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) setMessage(error.message);
     else setMessage("Check your email for a reset link.");
+  };
+
+  const updatePassword = async () => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage("Password updated. Please log in.");
+      await supabase.auth.signOut();
+      setPhase("login");
+    }
   };
 
   useEffect(() => {
@@ -150,6 +167,21 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
               <div className="flex gap-2">
                 <button className="border px-2" onClick={resetPassword}>Send Email</button>
                 <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+              </div>
+            </>
+          )}
+          {phase === "updatePassword" && (
+            <>
+              <h2 className="text-xl font-bold">Set New Password</h2>
+              <input
+                className="border p-1 w-full"
+                type="password"
+                placeholder="New password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button className="border px-2" onClick={updatePassword}>Update</button>
               </div>
             </>
           )}
