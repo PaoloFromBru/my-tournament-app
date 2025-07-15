@@ -10,6 +10,12 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 4. Set the SMTP settings to use your [Resend](https://resend.com) credentials so Supabase will send verification codes via Resend.
 5. Grab the project URL and anon key from the Supabase settings and add them to an `.env` file using the variables shown in `.env.example`.
 
+## Authentication
+
+Users sign in with an email and password. Registering sends a confirmation code
+to the provided address which must be entered to verify the account. Forgotten
+passwords can be reset via a recovery email.
+
 ## Getting Started
 
 First, run the development server:

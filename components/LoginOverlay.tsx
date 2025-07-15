@@ -5,8 +5,11 @@ import { supabase } from "../lib/supabaseBrowser";
 export default function LoginOverlay({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(undefined);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [phase, setPhase] = useState<"email" | "code">("email");
+  const [phase, setPhase] = useState<"login" | "register" | "verify" | "reset">(
+    "login"
+  );
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -17,52 +20,123 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const sendCode = async () => {
-    const { error } = await supabase.auth.signInWithOtp({
+  const loginUser = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
       email,
-      options: { shouldCreateUser: true },
+      password,
     });
     if (error) setMessage(error.message);
-    else setPhase("code");
+  };
+
+  const registerUser = async () => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (error) setMessage(error.message);
+    else setPhase("verify");
   };
 
   const verify = async () => {
     const { error } = await supabase.auth.verifyOtp({
       email,
       token: code,
-      type: "email",
+      type: "signup",
     });
     if (error) setMessage(error.message);
   };
+
+  const resetPassword = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) setMessage(error.message);
+    else setMessage("Check your email for a reset link.");
+  };
+
+  useEffect(() => {
+    setMessage("");
+    setCode("");
+    setPassword("");
+  }, [phase]);
 
   if (!user) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
         <div className="space-y-4 max-w-sm p-4 border bg-white">
-          <h2 className="text-xl font-bold">Login</h2>
-          {phase === "email" ? (
+          {phase === "login" && (
             <>
+              <h2 className="text-xl font-bold">Login</h2>
               <input
                 className="border p-1 w-full"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <button className="border px-2" onClick={sendCode}>
-                Send Code
-              </button>
+              <input
+                className="border p-1 w-full"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button className="border px-2" onClick={loginUser}>
+                  Login
+                </button>
+                <button className="border px-2" onClick={() => setPhase("register")}>Register</button>
+              </div>
+              <button className="text-sm underline" onClick={() => setPhase("reset")}>Forgot password?</button>
             </>
-          ) : (
+          )}
+          {phase === "register" && (
             <>
+              <h2 className="text-xl font-bold">Register</h2>
+              <input
+                className="border p-1 w-full"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                className="border p-1 w-full"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button className="border px-2" onClick={registerUser}>Register</button>
+                <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+              </div>
+            </>
+          )}
+          {phase === "verify" && (
+            <>
+              <h2 className="text-xl font-bold">Enter Confirmation Code</h2>
               <input
                 className="border p-1 w-full"
                 placeholder="Verification code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
               />
-              <button className="border px-2" onClick={verify}>
-                Verify
-              </button>
+              <div className="flex gap-2">
+                <button className="border px-2" onClick={verify}>Verify</button>
+                <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+              </div>
+            </>
+          )}
+          {phase === "reset" && (
+            <>
+              <h2 className="text-xl font-bold">Reset Password</h2>
+              <input
+                className="border p-1 w-full"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button className="border px-2" onClick={resetPassword}>Send Email</button>
+                <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+              </div>
             </>
           )}
           {message && <p className="text-red-600 text-sm">{message}</p>}
