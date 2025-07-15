@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Backend Setup
+
+1. Create a [Supabase](https://supabase.com) project.
+2. In the Supabase dashboard create two tables:
+   - **players** with columns `id` (uuid, primary key), `name` (text), `offense` (int4), `defense` (int4).
+   - **tournaments** with columns `id` (uuid, primary key) and `name` (text).
+3. Under **Authentication** enable email login and disable anonymous sign ups.
+4. Set the SMTP settings to use your [Resend](https://resend.com) credentials so Supabase will send verification codes via Resend.
+5. Grab the project URL and anon key from the Supabase settings and add them to an `.env` file using the variables shown in `.env.example`.
+
 ## Getting Started
 
 First, run the development server:
