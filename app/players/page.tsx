@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseBrowser";
 
 type Player = {
   id: number;
@@ -15,6 +16,14 @@ export default function PlayersPage() {
   const [defense, setDefense] = useState(0);
   const [editing, setEditing] = useState<number | null>(null);
 
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from('players').select('*');
+      setPlayers(data || []);
+    };
+    load();
+  }, []);
+
   const resetForm = () => {
     setName("");
     setOffense(0);
@@ -22,17 +31,17 @@ export default function PlayersPage() {
     setEditing(null);
   };
 
-  const addOrUpdate = () => {
+  const addOrUpdate = async () => {
     if (editing !== null) {
-      setPlayers((prev) =>
-        prev.map((p) =>
-          p.id === editing ? { ...p, name, offense, defense } : p
-        )
-      );
+      await supabase
+        .from('players')
+        .update({ name, offense, defense })
+        .eq('id', editing);
     } else {
-      const id = players.length ? players[players.length - 1].id + 1 : 1;
-      setPlayers([...players, { id, name, offense, defense }]);
+      await supabase.from('players').insert({ name, offense, defense });
     }
+    const { data } = await supabase.from('players').select('*');
+    setPlayers(data || []);
     resetForm();
   };
 
