@@ -86,11 +86,37 @@ export default function TournamentRunPage() {
     );
   };
 
+  const createSchedule = (list: Match[]) =>
+    list
+      .slice()
+      .sort((a, b) => {
+        const at = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+        const bt = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+        return at - bt;
+      });
+
+  const scheduledMatches = createSchedule(matches);
+
   const phases = Array.from(new Set(matches.map((m) => m.phase)));
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">{tournament?.name || "Tournament"} Run</h2>
+      <div>
+        <h3 className="font-semibold">Scheduled Games</h3>
+        <ul className="list-disc pl-5 space-y-1">
+          {scheduledMatches.map((m) => (
+            <li key={m.id}>
+              {teamName(m.team_a)} vs {teamName(m.team_b)}
+              {m.scheduled_at && (
+                <span className="ml-2 text-sm text-gray-500">
+                  {new Date(m.scheduled_at).toLocaleString()}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="flex space-x-4 overflow-x-auto">
         {phases.map((phase) => (
           <div key={phase} className="min-w-[220px]">
