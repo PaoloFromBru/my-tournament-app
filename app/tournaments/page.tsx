@@ -17,6 +17,12 @@ export default function TournamentsPage() {
     });
   }, []);
 
+  const deleteTournament = async (id: number) => {
+    if (!confirm('Delete this tournament?')) return;
+    await supabase.from('tournaments').delete().eq('id', id);
+    setTournaments((prev) => prev.filter((t) => t.id !== id));
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Tournaments</h2>
@@ -28,6 +34,12 @@ export default function TournamentsPage() {
             <Link href={`/tournaments/${t.id}`} className="border px-2 py-0.5">
               View
             </Link>
+            <button
+              className="border px-2 py-0.5"
+              onClick={() => deleteTournament(t.id)}
+            >
+              Delete
+            </button>
           </li>
         ))}
       </ul>

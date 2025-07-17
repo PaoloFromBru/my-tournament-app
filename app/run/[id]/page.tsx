@@ -44,17 +44,50 @@ export default function TournamentRunPage() {
           .single();
         setTournament(t);
 
-        const { data: matchData } = await supabase
+        let { data: matchData } = await supabase
           .from("matches")
           .select("*")
           .eq("tournament_id", id)
           .eq("user_id", currentUser.id);
-        setMatches(matchData || []);
 
         const { data: teamData } = await supabase
           .from("teams")
           .select("id, name")
-          .eq("user_id", currentUser.id);
+          .eq("user_id", currentUser.id)
+          .eq("tournament_id", id);
+
+        if (!matchData || matchData.length === 0) {
+          const pairs: { team_a: number; team_b: number }[] = [];
+          for (let i = 0; i < (teamData || []).length; i += 2) {
+            if (teamData && teamData[i + 1]) {
+              pairs.push({
+                team_a: teamData[i].id,
+                team_b: teamData[i + 1].id,
+              });
+            }
+          }
+          if (pairs.length) {
+            await supabase.from("matches").insert(
+              pairs.map((p) => ({
+                ...p,
+                phase: "round1",
+                scheduled_at: null,
+                tournament_id: id,
+                user_id: currentUser.id,
+              }))
+            );
+            const { data: newMatches } = await supabase
+              .from("matches")
+              .select("*")
+              .eq("tournament_id", id)
+              .eq("user_id", currentUser.id);
+            matchData = newMatches || [];
+          } else {
+            matchData = [];
+          }
+        }
+
+        setMatches(matchData || []);
         setTeams(teamData || []);
 
         const initial: Record<number, { a: number; b: number }> = {};
@@ -86,37 +119,11 @@ export default function TournamentRunPage() {
     );
   };
 
-  const createSchedule = (list: Match[]) =>
-    list
-      .slice()
-      .sort((a, b) => {
-        const at = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
-        const bt = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
-        return at - bt;
-      });
-
-  const scheduledMatches = createSchedule(matches);
-
   const phases = Array.from(new Set(matches.map((m) => m.phase)));
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">{tournament?.name || "Tournament"} Run</h2>
-      <div>
-        <h3 className="font-semibold">Scheduled Games</h3>
-        <ul className="list-disc pl-5 space-y-1">
-          {scheduledMatches.map((m) => (
-            <li key={m.id}>
-              {teamName(m.team_a)} vs {teamName(m.team_b)}
-              {m.scheduled_at && (
-                <span className="ml-2 text-sm text-gray-500">
-                  {new Date(m.scheduled_at).toLocaleString()}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
       <div className="flex space-x-4 overflow-x-auto">
         {phases.map((phase) => (
           <div key={phase} className="min-w-[220px]">

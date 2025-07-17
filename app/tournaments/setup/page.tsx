@@ -38,12 +38,25 @@ export default function TournamentSetupPage() {
 
   const createTournament = async () => {
     if (!user || !name || selected.length === 0) return;
-    await supabase.from("tournaments").insert({
-      name,
-      max_duration: maxDuration,
-      format,
-      user_id: user.id,
-    });
+    const { data: inserted } = await supabase
+      .from("tournaments")
+      .insert({
+        name,
+        max_duration: maxDuration,
+        format,
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (inserted?.id) {
+      await supabase
+        .from("teams")
+        .update({ tournament_id: inserted.id })
+        .in("id", selected)
+        .eq("user_id", user.id);
+    }
+
     setName("");
     setSelected([]);
     setMaxDuration("15 minutes");
