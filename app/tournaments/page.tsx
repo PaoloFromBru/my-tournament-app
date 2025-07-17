@@ -24,7 +24,7 @@ export default function TournamentsPage() {
         {tournaments.map((t) => (
           <li key={t.id} className="flex items-center gap-2">
             <span className="flex-1">{t.name}</span>
-            <Link href="/run" className="border px-2 py-0.5">Run</Link>
+            <Link href={`/run/${t.id}`} className="border px-2 py-0.5">Run</Link>
             <Link href={`/tournaments/${t.id}`} className="border px-2 py-0.5">
               View
             </Link>
