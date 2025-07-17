@@ -12,10 +12,8 @@ interface Player {
 
 interface TeamRow {
   id: number;
-  team_name: string;
-  player1_id: number;
-  player2_id: number;
-  user_id: string;
+  name: string;
+  playerIds: number[];
 }
 
 export default function TeamsPage() {
@@ -37,11 +35,25 @@ export default function TeamsPage() {
           .eq("user_id", userData.user.id);
         setPlayers(playerData || []);
 
-        const { data: teamData } = await supabase
+        const { data: teamRows } = await supabase
+          .from("teams")
+          .select("*")
+          .eq("user_id", userData.user.id);
+
+        const { data: teamPlayerRows } = await supabase
           .from("team_players")
           .select("*")
           .eq("user_id", userData.user.id);
-        setTeams(teamData || []);
+
+        const combined: TeamRow[] = (teamRows || []).map((t) => ({
+          id: t.id,
+          name: t.name,
+          playerIds: (teamPlayerRows || [])
+            .filter((tp) => tp.team_id === t.id)
+            .map((tp) => tp.player_id),
+        }));
+
+        setTeams(combined);
       }
     };
     load();
@@ -56,36 +68,60 @@ export default function TeamsPage() {
   const addTeam = async () => {
     if (!user || selected.length !== 2 || !teamName) return;
 
+    let teamId = editingId;
+
     if (editingId !== null) {
       await supabase
-        .from("team_players")
-        .update({
-          team_name: teamName,
-          player1_id: selected[0],
-          player2_id: selected[1],
-        })
+        .from("teams")
+        .update({ name: teamName })
         .eq("id", editingId)
         .eq("user_id", user.id);
+
+      await supabase
+        .from("team_players")
+        .delete()
+        .eq("team_id", editingId)
+        .eq("user_id", user.id);
     } else {
-      await supabase.from("team_players").insert({
-        team_name: teamName,
-        player1_id: selected[0],
-        player2_id: selected[1],
-        user_id: user.id,
-      });
+      const { data: inserted } = await supabase
+        .from("teams")
+        .insert({ name: teamName, user_id: user.id })
+        .select()
+        .single();
+      teamId = inserted?.id ?? null;
     }
 
-    const { data } = await supabase
+    if (teamId) {
+      await supabase.from("team_players").insert(
+        selected.map((pid) => ({ team_id: teamId, player_id: pid, user_id: user.id }))
+      );
+    }
+
+    const { data: teamRows } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("user_id", user.id);
+
+    const { data: teamPlayerRows } = await supabase
       .from("team_players")
       .select("*")
       .eq("user_id", user.id);
-    setTeams(data || []);
+
+    const combined: TeamRow[] = (teamRows || []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      playerIds: (teamPlayerRows || [])
+        .filter((tp) => tp.team_id === t.id)
+        .map((tp) => tp.player_id),
+    }));
+
+    setTeams(combined);
     resetForm();
   };
 
   const editTeam = (t: TeamRow) => {
-    setTeamName(t.team_name);
-    setSelected([t.player1_id, t.player2_id]);
+    setTeamName(t.name);
+    setSelected(t.playerIds);
     setEditingId(t.id);
   };
 
@@ -134,7 +170,7 @@ export default function TeamsPage() {
       <ul className="list-disc pl-5">
         {teams.map((t) => (
           <li key={t.id}>
-            {t.team_name}: {playerName(t.player1_id)} & {playerName(t.player2_id)}
+            {t.name}: {t.playerIds.map(playerName).join(" & ")}
             <button className="ml-2 text-blue-600" onClick={() => editTeam(t)}>
               Edit
             </button>
