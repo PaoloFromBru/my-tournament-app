@@ -14,7 +14,7 @@ export default function NavSelect() {
         Select page
       </option>
       <option value="/players">Players</option>
-      <option value="/setup">Tournament Setup</option>
+      <option value="/tournaments/setup">Tournament Setup</option>
       <option value="/run">Tournament Run</option>
       <option value="/teams">Teams</option>
       <option value="/tournaments">Tournaments</option>
