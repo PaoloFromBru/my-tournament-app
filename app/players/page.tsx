@@ -107,34 +107,44 @@ export default function PlayersPage() {
 
   const deletePlayer = async (id: number) => {
     if (!user) return;
-    if (!confirm('Delete this player?')) return;
+    if (!confirm('Delete this player and all associated teams?')) return;
 
-    let { data: unknown } = await supabase
-      .from('players')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('name', 'Unknown player')
-      .single();
+    const { data: tpRows } = await supabase
+      .from('team_players')
+      .select('team_id')
+      .eq('player_id', id)
+      .eq('user_id', user.id);
+    const teamIds = (tpRows || []).map((tp) => tp.team_id);
 
-    if (!unknown) {
-      const { data: inserted } = await supabase
-        .from('players')
-        .insert({
-          name: 'Unknown player',
-          offense: 0,
-          defense: 0,
-          user_id: user.id,
-        })
-        .select()
-        .single();
-      unknown = inserted || undefined;
-    }
-
-    if (unknown) {
+    for (const teamId of teamIds) {
       await supabase
         .from('team_players')
-        .update({ player_id: unknown.id })
-        .eq('player_id', id)
+        .delete()
+        .eq('team_id', teamId)
+        .eq('user_id', user.id);
+
+      await supabase
+        .from('matches')
+        .update({ team_a: null })
+        .eq('team_a', teamId)
+        .eq('user_id', user.id);
+
+      await supabase
+        .from('matches')
+        .update({ team_b: null })
+        .eq('team_b', teamId)
+        .eq('user_id', user.id);
+
+      await supabase
+        .from('matches')
+        .update({ winner: null })
+        .eq('winner', teamId)
+        .eq('user_id', user.id);
+
+      await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId)
         .eq('user_id', user.id);
     }
 
