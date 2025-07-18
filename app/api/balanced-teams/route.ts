@@ -36,8 +36,19 @@ export async function POST(req: NextRequest) {
 
     debug.push("OpenAI response received");
 
+    if (!aiRes.ok) {
+      debug.push(`OpenAI request failed: ${aiRes.status}`);
+      const error = await aiRes.text();
+      debug.push(error);
+      return NextResponse.json({ error: "openai failed", debug }, { status: 500 });
+    }
+
     const data = await aiRes.json();
-    const text = data.choices?.[0]?.message?.content || "{}";
+    if (!data.choices || data.choices.length === 0) {
+      debug.push("OpenAI returned no choices");
+      return NextResponse.json({ error: "openai failed", debug }, { status: 500 });
+    }
+    const text = data.choices[0].message?.content || "{}";
     debug.push("Parsing response...");
     const json = JSON.parse(text);
     debug.push("Returning teams");
