@@ -45,6 +45,10 @@ export default function PlayersPage() {
 
   const addOrUpdate = async () => {
     if (!user) return;
+    if (offense < 0 || offense > 10 || defense < 0 || defense > 10) {
+      alert('Skills must be between 0 and 10');
+      return;
+    }
     if (editing !== null) {
       await supabase
         .from('players')
@@ -79,6 +83,15 @@ export default function PlayersPage() {
 
   const updateSkills = async (id: number) => {
     if (!user) return;
+    if (
+      skillOffense < 0 ||
+      skillOffense > 10 ||
+      skillDefense < 0 ||
+      skillDefense > 10
+    ) {
+      alert('Skills must be between 0 and 10');
+      return;
+    }
     await supabase
       .from('players')
       .update({ offense: skillOffense, defense: skillDefense })
