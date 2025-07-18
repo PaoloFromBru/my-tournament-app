@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
 
@@ -29,8 +29,13 @@ export default function TournamentRunPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [scores, setScores] = useState<Record<number, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
+  // ensures initial match generation only happens once
+  const initialized = useRef(false);
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     const load = async () => {
       const { data: userData } = await supabase.auth.getUser();
       const currentUser = userData.user;
@@ -102,7 +107,7 @@ export default function TournamentRunPage() {
   }, [id]);
 
   const teamName = (tid: number | null | undefined) =>
-    teams.find((t) => t.id === tid)?.name || `Team ${tid}`;
+    teams.find((t) => t.id === tid)?.name || "Unknown team";
 
   const triggerFireworks = () => {
     const container = document.createElement("div");
@@ -118,7 +123,8 @@ export default function TournamentRunPage() {
       container.appendChild(el);
     }
     document.body.appendChild(container);
-    setTimeout(() => container.remove(), 800);
+    // keep the fireworks visible for a little longer so users can enjoy them
+    setTimeout(() => container.remove(), 3000);
   };
 
   const nextRound = async () => {

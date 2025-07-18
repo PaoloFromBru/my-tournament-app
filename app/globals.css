@@ -40,7 +40,8 @@ body {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-  animation: firework 700ms ease-out forwards;
+  /* extend the animation so the fireworks are visible for longer */
+  animation: firework 3s ease-out forwards;
 }
 
 @keyframes firework {

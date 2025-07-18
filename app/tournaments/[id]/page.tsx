@@ -52,7 +52,7 @@ export default function TournamentViewPage() {
   }, [id]);
 
   const teamName = (tid: number | null | undefined) =>
-    teams.find((t) => t.id === tid)?.name || `Team ${tid}`;
+    teams.find((t) => t.id === tid)?.name || "Unknown team";
 
   const phases = Array.from(new Set(matches.map((m) => m.phase))).sort(
     (a, b) =>
