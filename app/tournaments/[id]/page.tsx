@@ -26,6 +26,7 @@ export default function TournamentViewPage() {
   const [tournament, setTournament] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -60,9 +61,87 @@ export default function TournamentViewPage() {
       (parseInt(b.replace(/\D/g, "")) || 0)
   );
 
+  const generateSchedule = async () => {
+    setLoading(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const currentUser = userData.user;
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: teamData } = await supabase
+      .from("teams")
+      .select("id, name")
+      .eq("user_id", currentUser.id)
+      .eq("tournament_id", id);
+
+    const tms = teamData || [];
+    if (tms.length < 2) {
+      setLoading(false);
+      return;
+    }
+
+    const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
+    let schedule: { matches: { round: number; teamA: number; teamB: number }[] } = { matches: [] };
+
+    if (isPower(tms.length)) {
+      const pairs = [] as { round: number; teamA: number; teamB: number }[];
+      for (let i = 0; i < tms.length; i += 2) {
+        if (tms[i + 1]) {
+          pairs.push({ round: 1, teamA: tms[i].id, teamB: tms[i + 1].id });
+        }
+      }
+      schedule.matches = pairs;
+    } else {
+      const res = await fetch("/api/best-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teams: tms }),
+      });
+      if (res.ok) {
+        schedule = await res.json();
+      }
+    }
+
+    await supabase
+      .from("matches")
+      .delete()
+      .eq("tournament_id", id)
+      .eq("user_id", currentUser.id);
+
+    if (schedule.matches.length) {
+      await supabase.from("matches").insert(
+        schedule.matches.map((m) => ({
+          team_a: m.teamA,
+          team_b: m.teamB,
+          phase: `round${m.round}`,
+          scheduled_at: null,
+          tournament_id: id,
+          user_id: currentUser.id,
+        }))
+      );
+    }
+
+    const { data: matchData } = await supabase
+      .from("matches")
+      .select("*")
+      .eq("tournament_id", id);
+    setMatches(matchData || []);
+    setTeams(tms);
+    setLoading(false);
+  };
+
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">{tournament?.name || "Tournament"}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="flex-1 text-xl font-bold">
+          {tournament?.name || "Tournament"}
+        </h2>
+        <button className="border px-2" onClick={generateSchedule} disabled={loading}>
+          {loading ? "Building..." : "AI Schedule"}
+        </button>
+      </div>
       {matches.length === 0 ? (
         <p>Results and details will appear here.</p>
       ) : (
