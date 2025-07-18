@@ -67,7 +67,9 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
   };
 
   const resetPassword = async () => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/reset`,
+    });
     if (error) setMessage(error.message);
     else setMessage("Check your email for a reset link.");
   };
