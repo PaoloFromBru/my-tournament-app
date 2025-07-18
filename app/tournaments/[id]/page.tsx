@@ -27,6 +27,7 @@ export default function TournamentViewPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
+  const [debug, setDebug] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -83,7 +84,8 @@ export default function TournamentViewPage() {
     }
 
     const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
-    let schedule: { matches: { round: number; teamA: number; teamB: number }[] } = { matches: [] };
+    let schedule: { matches: { round: number; teamA: number; teamB: number }[] } & { debug?: string[] } = { matches: [] };
+    let debugInfo: string[] = [];
 
     if (isPower(tms.length)) {
       const pairs = [] as { round: number; teamA: number; teamB: number }[];
@@ -99,8 +101,13 @@ export default function TournamentViewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teams: tms }),
       });
+      const json = await res.json();
       if (res.ok) {
-        schedule = await res.json();
+        schedule = json;
+      }
+      debugInfo = json.debug || [];
+      if (!res.ok) {
+        alert(json.error || 'AI schedule failed');
       }
     }
 
@@ -129,6 +136,7 @@ export default function TournamentViewPage() {
       .eq("tournament_id", id);
     setMatches(matchData || []);
     setTeams(tms);
+    setDebug(debugInfo);
     setLoading(false);
   };
 
@@ -142,6 +150,12 @@ export default function TournamentViewPage() {
           {loading ? "Building..." : "AI Schedule"}
         </button>
       </div>
+      {debug.length > 0 && (
+        <details className="text-sm border p-2 rounded">
+          <summary className="cursor-pointer">Debug info</summary>
+          <pre className="whitespace-pre-wrap">{debug.join("\n")}</pre>
+        </details>
+      )}
       {matches.length === 0 ? (
         <p>Results and details will appear here.</p>
       ) : (
