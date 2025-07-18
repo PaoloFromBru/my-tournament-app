@@ -145,23 +145,19 @@ export default function PlayersPage() {
           onChange={(e) => setName(e.target.value)}
         />
         <p className="text-sm text-gray-600">
-          Set the player's skill levels using the sliders below. The first
-          slider controls the Offence skill, the second controls the Defence
-          skill.
+          Enter the player's Offence and Defence levels below (0-10).
         </p>
         <input
-          type="range"
-          min="0"
-          max="10"
-          className="w-full"
+          type="number"
+          className="border p-1"
+          placeholder="Offense"
           value={offense}
           onChange={(e) => setOffense(Number(e.target.value))}
         />
         <input
-          type="range"
-          min="0"
-          max="10"
-          className="w-full"
+          type="number"
+          className="border p-1"
+          placeholder="Defense"
           value={defense}
           onChange={(e) => setDefense(Number(e.target.value))}
         />
