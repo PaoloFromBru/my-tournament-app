@@ -162,9 +162,9 @@ export default function TournamentsPage() {
       </div>
       <div className="space-y-4">
         <h2 className="text-xl font-bold">Tournaments</h2>
-        <ul className="list-disc pl-5 space-y-1">
+        <ul className="space-y-1">
           {tournaments.map((t) => (
-            <li key={t.id} className="flex items-center gap-2">
+            <li key={t.id} className="flex items-center gap-2 border-b pb-1">
               <span className="flex-1">{t.name}</span>
               <Link href={`/run/${t.id}`} className="border px-2 py-0.5">
                 Run
