@@ -92,6 +92,48 @@ export default function PlayersPage() {
     setSkillEditing(null);
   };
 
+  const deletePlayer = async (id: number) => {
+    if (!user) return;
+    if (!confirm('Delete this player?')) return;
+
+    let { data: unknown } = await supabase
+      .from('players')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('name', 'Unknown player')
+      .single();
+
+    if (!unknown) {
+      const { data: inserted } = await supabase
+        .from('players')
+        .insert({
+          name: 'Unknown player',
+          offense: 0,
+          defense: 0,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+      unknown = inserted || undefined;
+    }
+
+    if (unknown) {
+      await supabase
+        .from('team_players')
+        .update({ player_id: unknown.id })
+        .eq('player_id', id)
+        .eq('user_id', user.id);
+    }
+
+    await supabase
+      .from('players')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    setPlayers((prev) => prev.filter((p) => p.id !== id));
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Players</h2>
@@ -127,17 +169,20 @@ export default function PlayersPage() {
       </div>
       <ul className="space-y-1">
         {players.map((p) => (
-          <li key={p.id} className="flex flex-col gap-1 border-b pb-2">
-            <div className="flex gap-2 items-center">
-              <span>{p.name}</span>
-              <span className="text-sm text-gray-500">
-                O:{p.offense} D:{p.defense}
+          <li key={p.id} className="border-b pb-2">
+            <div className="flex items-center gap-2">
+              <span className="flex-1">
+                {p.name}{" "}
+                <span className="text-sm text-gray-500">O:{p.offense} D:{p.defense}</span>
               </span>
-              <button className="text-blue-600" onClick={() => edit(p)}>
+              <button className="border px-2 py-0.5" onClick={() => edit(p)}>
                 Edit
               </button>
-              <button className="text-blue-600" onClick={() => editSkills(p)}>
+              <button className="border px-2 py-0.5" onClick={() => editSkills(p)}>
                 Change skills
+              </button>
+              <button className="border px-2 py-0.5" onClick={() => deletePlayer(p.id)}>
+                Delete
               </button>
             </div>
             {skillEditing === p.id && (
