@@ -254,7 +254,7 @@ export default function TeamsPage() {
             </label>
           ))}
           <button
-            className="border px-2"
+            className="border border-green-500 px-2"
             onClick={addTeam}
             disabled={selected.length !== 2 || !teamName}
           >
@@ -279,11 +279,11 @@ export default function TeamsPage() {
                 O:{teamOffense(t.playerIds)} D:{teamDefense(t.playerIds)}
               </span>
             </span>
-            <button className="border px-2 py-0.5" onClick={() => editTeam(t)}>
+            <button className="border border-blue-500 px-2 py-0.5" onClick={() => editTeam(t)}>
               Edit
             </button>
             <button
-              className="border px-2 py-0.5"
+              className="border border-orange-500 px-2 py-0.5"
               onClick={() => deleteTeam(t.id)}
             >
               Delete

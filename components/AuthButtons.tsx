@@ -24,7 +24,14 @@ export default function AuthButtons() {
   return (
     <>
       {user && <span>{user.email}</span>}
-      <button className="border px-2" onClick={user ? logout : login}>
+      <button
+        className={
+          user
+            ? "bg-red-500 hover:bg-red-600 text-white px-2"
+            : "bg-green-500 hover:bg-green-600 text-white px-2"
+        }
+        onClick={user ? logout : login}
+      >
         {user ? "Logout" : "Login"}
       </button>
     </>
