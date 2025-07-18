@@ -92,9 +92,15 @@ export default function TeamsPage() {
     }
 
     if (teamId) {
-      await supabase.from("team_players").insert(
-        selected.map((pid) => ({ team_id: teamId, player_id: pid, user_id: user.id }))
-      );
+      await supabase
+        .from("team_players")
+        .insert(
+          selected.map((pid) => ({
+            team_id: teamId,
+            player_id: pid,
+            user_id: user.id,
+          })),
+        );
     }
 
     const { data: teamRows } = await supabase
@@ -127,42 +133,83 @@ export default function TeamsPage() {
 
   const deleteTeam = async (id: number) => {
     if (!user) return;
-    if (!confirm('Delete this team?')) return;
+    if (!confirm("Delete this team?")) return;
 
     await supabase
-      .from('team_players')
+      .from("team_players")
       .delete()
-      .eq('team_id', id)
-      .eq('user_id', user.id);
+      .eq("team_id", id)
+      .eq("user_id", user.id);
 
     await supabase
-      .from('matches')
+      .from("matches")
       .update({ team_a: null })
-      .eq('team_a', id)
-      .eq('user_id', user.id);
+      .eq("team_a", id)
+      .eq("user_id", user.id);
 
     await supabase
-      .from('matches')
+      .from("matches")
       .update({ team_b: null })
-      .eq('team_b', id)
-      .eq('user_id', user.id);
+      .eq("team_b", id)
+      .eq("user_id", user.id);
 
     await supabase
-      .from('matches')
+      .from("matches")
       .update({ winner: null })
-      .eq('winner', id)
-      .eq('user_id', user.id);
+      .eq("winner", id)
+      .eq("user_id", user.id);
 
-    await supabase
-      .from('teams')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+    await supabase.from("teams").delete().eq("id", id).eq("user_id", user.id);
 
     setTeams((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const playerName = (id: number) => players.find((p) => p.id === id)?.name || "";
+  const generateBalancedTeams = async () => {
+    if (!user) return;
+    const res = await fetch("/api/balanced-teams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ players }),
+    });
+    if (!res.ok) return;
+    const { teams: newTeams } = await res.json();
+    for (const t of newTeams || []) {
+      const { data: inserted } = await supabase
+        .from("teams")
+        .insert({ name: t.name, user_id: user.id })
+        .select()
+        .single();
+      const teamId = inserted?.id;
+      if (teamId) {
+        await supabase.from("team_players").insert(
+          t.playerIds.map((pid: number) => ({
+            team_id: teamId,
+            player_id: pid,
+            user_id: user.id,
+          })),
+        );
+      }
+    }
+    const { data: teamRows } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("user_id", user.id);
+    const { data: teamPlayerRows } = await supabase
+      .from("team_players")
+      .select("*")
+      .eq("user_id", user.id);
+    const combined: TeamRow[] = (teamRows || []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      playerIds: (teamPlayerRows || [])
+        .filter((tp) => tp.team_id === t.id)
+        .map((tp) => tp.player_id),
+    }));
+    setTeams(combined);
+  };
+
+  const playerName = (id: number) =>
+    players.find((p) => p.id === id)?.name || "";
 
   return (
     <div className="space-y-4">
@@ -187,15 +234,20 @@ export default function TeamsPage() {
                     setSelected(selected.filter((id) => id !== p.id));
                   }
                 }}
-                disabled={
-                  !selected.includes(p.id) && selected.length === 2
-                }
+                disabled={!selected.includes(p.id) && selected.length === 2}
               />
               <span>{p.name}</span>
             </label>
           ))}
-          <button className="border px-2" onClick={addTeam} disabled={selected.length !== 2 || !teamName}>
+          <button
+            className="border px-2"
+            onClick={addTeam}
+            disabled={selected.length !== 2 || !teamName}
+          >
             {editingId ? "Update" : "Add"}
+          </button>
+          <button className="border px-2" onClick={generateBalancedTeams}>
+            Balanced teams
           </button>
           {editingId && (
             <button className="border px-2" onClick={resetForm}>
@@ -213,7 +265,10 @@ export default function TeamsPage() {
             <button className="border px-2 py-0.5" onClick={() => editTeam(t)}>
               Edit
             </button>
-            <button className="border px-2 py-0.5" onClick={() => deleteTeam(t.id)}>
+            <button
+              className="border px-2 py-0.5"
+              onClick={() => deleteTeam(t.id)}
+            >
               Delete
             </button>
           </li>
