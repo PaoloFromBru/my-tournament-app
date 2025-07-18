@@ -125,6 +125,43 @@ export default function TeamsPage() {
     setEditingId(t.id);
   };
 
+  const deleteTeam = async (id: number) => {
+    if (!user) return;
+    if (!confirm('Delete this team?')) return;
+
+    await supabase
+      .from('team_players')
+      .delete()
+      .eq('team_id', id)
+      .eq('user_id', user.id);
+
+    await supabase
+      .from('matches')
+      .update({ team_a: null })
+      .eq('team_a', id)
+      .eq('user_id', user.id);
+
+    await supabase
+      .from('matches')
+      .update({ team_b: null })
+      .eq('team_b', id)
+      .eq('user_id', user.id);
+
+    await supabase
+      .from('matches')
+      .update({ winner: null })
+      .eq('winner', id)
+      .eq('user_id', user.id);
+
+    await supabase
+      .from('teams')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    setTeams((prev) => prev.filter((t) => t.id !== id));
+  };
+
   const playerName = (id: number) => players.find((p) => p.id === id)?.name || "";
 
   return (
@@ -167,12 +204,17 @@ export default function TeamsPage() {
           )}
         </div>
       </div>
-      <ul className="list-disc pl-5">
+      <ul className="space-y-1">
         {teams.map((t) => (
-          <li key={t.id}>
-            {t.name}: {t.playerIds.map(playerName).join(" & ")}
-            <button className="ml-2 text-blue-600" onClick={() => editTeam(t)}>
+          <li key={t.id} className="flex items-center gap-2 border-b pb-1">
+            <span className="flex-1">
+              {t.name}: {t.playerIds.map(playerName).join(" & ")}
+            </span>
+            <button className="border px-2 py-0.5" onClick={() => editTeam(t)}>
               Edit
+            </button>
+            <button className="border px-2 py-0.5" onClick={() => deleteTeam(t.id)}>
+              Delete
             </button>
           </li>
         ))}

@@ -84,6 +84,11 @@ export default function TournamentsPage() {
       .eq("tournament_id", id)
       .eq("user_id", user.id);
     await supabase
+      .from("teams")
+      .update({ tournament_id: null })
+      .eq("tournament_id", id)
+      .eq("user_id", user.id);
+    await supabase
       .from("tournaments")
       .delete()
       .eq("id", id)
