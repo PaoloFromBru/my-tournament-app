@@ -3,14 +3,26 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   const { players } = await req.json();
 
+  const debug: string[] = [];
   const prompt = `You are a helpful assistant. Create balanced two-player teams from the provided list of players. Each player has an id, offense and defense skill. Make the teams so that offense and defense are as evenly distributed as possible across all teams. Use names from The Lord of the Rings for the teams. Respond with JSON only in the format {"teams": [{"name": "string", "playerIds": [id1, id2]}]}.`;
+
+  debug.push("Retrieving API key...");
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    debug.push("OPENAI_API_KEY not found");
+    return NextResponse.json(
+      { error: "Missing API key", debug },
+      { status: 500 },
+    );
+  }
+  debug.push("Key retrieved, contacting OpenAI...");
 
   try {
     const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
@@ -22,12 +34,17 @@ export async function POST(req: NextRequest) {
       }),
     });
 
+    debug.push("OpenAI response received");
+
     const data = await aiRes.json();
     const text = data.choices?.[0]?.message?.content || "{}";
+    debug.push("Parsing response...");
     const json = JSON.parse(text);
-    return NextResponse.json(json);
-  } catch (err) {
+    debug.push("Returning teams");
+    return NextResponse.json({ ...json, debug });
+  } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: "failed" }, { status: 500 });
+    debug.push(`Error: ${err?.message || "unknown"}`);
+    return NextResponse.json({ error: "failed", debug }, { status: 500 });
   }
 }
