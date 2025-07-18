@@ -120,7 +120,7 @@ export default function TournamentSetupPage() {
         </label>
       </div>
       <button
-        className="border px-2"
+        className="border border-green-500 px-2"
         onClick={createTournament}
         disabled={!name || selected.length === 0}
       >

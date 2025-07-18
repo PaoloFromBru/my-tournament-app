@@ -118,7 +118,7 @@ export default function SetupPage() {
               <span>{p.name}</span>
             </label>
           ))}
-          <button className="border px-2" onClick={addTeam} disabled={selected.length !== 2}>
+          <button className="border border-green-500 px-2" onClick={addTeam} disabled={selected.length !== 2}>
             {editingTeam ? 'Update Team' : 'Add Team'}
           </button>
           {editingTeam && (
@@ -131,7 +131,7 @@ export default function SetupPage() {
           {teams.map((t) => (
             <li key={t.id}>
               Team {t.id}: {t.players[0].name} & {t.players[1].name}
-              <button className="ml-2 text-blue-600" onClick={() => editTeam(t)}>
+              <button className="ml-2 border border-blue-500 px-1" onClick={() => editTeam(t)}>
                 Edit
               </button>
             </li>
@@ -146,9 +146,9 @@ export default function SetupPage() {
           value={tournamentName}
           onChange={(e) => setTournamentName(e.target.value)}
         />
-        <button className="border px-2" onClick={createTournament} disabled={!tournamentName || teams.length === 0}>
-          Create
-        </button>
+          <button className="border border-green-500 px-2" onClick={createTournament} disabled={!tournamentName || teams.length === 0}>
+            Create
+          </button>
       </div>
     </div>
   );

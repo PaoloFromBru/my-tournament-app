@@ -184,7 +184,7 @@ export default function PlayersPage() {
           value={defense}
           onChange={(e) => setDefense(Number(e.target.value))}
         />
-        <button className="border px-2" onClick={addOrUpdate}>
+        <button className="border border-green-500 px-2" onClick={addOrUpdate}>
           {editing ? "Update" : "Add"}
         </button>
         {editing && (
@@ -201,13 +201,13 @@ export default function PlayersPage() {
                 {p.name}{" "}
                 <span className="text-sm text-gray-500">O:{p.offense} D:{p.defense}</span>
               </span>
-              <button className="border px-2 py-0.5" onClick={() => edit(p)}>
+              <button className="border border-blue-500 px-2 py-0.5" onClick={() => edit(p)}>
                 Edit
               </button>
-              <button className="border px-2 py-0.5" onClick={() => editSkills(p)}>
+              <button className="border border-yellow-500 px-2 py-0.5" onClick={() => editSkills(p)}>
                 Change skills
               </button>
-              <button className="border px-2 py-0.5" onClick={() => deletePlayer(p.id)}>
+              <button className="border border-orange-500 px-2 py-0.5" onClick={() => deletePlayer(p.id)}>
                 Delete
               </button>
             </div>
@@ -225,7 +225,7 @@ export default function PlayersPage() {
                   value={skillDefense}
                   onChange={(e) => setSkillDefense(Number(e.target.value))}
                 />
-                <button className="border px-2" onClick={() => updateSkills(p.id)}>
+                <button className="border border-yellow-500 px-2" onClick={() => updateSkills(p.id)}>
                   Save
                 </button>
                 <button className="border px-2" onClick={() => setSkillEditing(null)}>

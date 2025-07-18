@@ -21,6 +21,7 @@ export default function TournamentsPage() {
   const [maxDuration, setMaxDuration] = useState("15 minutes");
   const [format, setFormat] = useState("direct elimination");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [debug, setDebug] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -49,6 +50,7 @@ export default function TournamentsPage() {
 
   const createTournament = async () => {
     if (!user || !name || selected.length === 0) return;
+    setDebug([]);
     const { data: inserted } = await supabase
       .from("tournaments")
       .insert({
@@ -67,6 +69,25 @@ export default function TournamentsPage() {
         .in("id", selected)
         .eq("user_id", user.id);
       setTournaments((prev) => [...prev, inserted]);
+    }
+
+    const teamsForSchedule = teams.filter((t) => selected.includes(t.id));
+    const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
+    if (teamsForSchedule.length > 1 && !isPower(teamsForSchedule.length)) {
+      try {
+        const res = await fetch("/api/best-schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teams: teamsForSchedule }),
+        });
+        const json = await res.json();
+        setDebug(json.debug || []);
+        if (!res.ok) {
+          alert(json.error || "AI schedule failed");
+        }
+      } catch (err: any) {
+        setDebug([err?.message || "schedule error"]);
+      }
     }
 
     setName("");
@@ -153,12 +174,15 @@ export default function TournamentsPage() {
           </label>
         </div>
         <button
-          className="border px-2"
+          className="border border-green-500 px-2"
           onClick={createTournament}
           disabled={!name || selected.length === 0}
         >
           Create Tournament
         </button>
+        {debug.length > 0 && (
+          <pre className="border p-2 text-sm whitespace-pre-wrap">{debug.join("\n")}</pre>
+        )}
       </div>
       <div className="space-y-4">
         <h2 className="text-xl font-bold">Tournaments</h2>
@@ -172,7 +196,7 @@ export default function TournamentsPage() {
               <Link href={`/tournaments/${t.id}`} className="border px-2 py-0.5">
                 View
               </Link>
-              <button className="border px-2 py-0.5" onClick={() => deleteTournament(t.id)}>
+              <button className="border border-orange-500 px-2 py-0.5" onClick={() => deleteTournament(t.id)}>
                 Delete
               </button>
             </li>
