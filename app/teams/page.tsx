@@ -23,7 +23,6 @@ export default function TeamsPage() {
   const [teamName, setTeamName] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [debugMessages, setDebugMessages] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -167,20 +166,13 @@ export default function TeamsPage() {
 
   const generateBalancedTeams = async () => {
     if (!user) return;
-    setDebugMessages(["Sending request..."]);
     const res = await fetch("/api/balanced-teams", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ players }),
     });
-    const json = await res.json();
-    const serverDebug: string[] = json.debug || [];
-    setDebugMessages((prev) => [...prev, ...serverDebug]);
-    if (!res.ok) {
-      setDebugMessages((prev) => [...prev, "Request failed"]);
-      return;
-    }
-    const { teams: newTeams } = json;
+    if (!res.ok) return;
+    const { teams: newTeams } = await res.json();
     for (const t of newTeams || []) {
       const { data: inserted } = await supabase
         .from("teams")
@@ -214,7 +206,6 @@ export default function TeamsPage() {
         .map((tp) => tp.player_id),
     }));
     setTeams(combined);
-    setDebugMessages((prev) => [...prev, "Teams updated"]);
   };
 
   const playerName = (id: number) =>
@@ -278,15 +269,6 @@ export default function TeamsPage() {
             </button>
           )}
         </div>
-        {debugMessages.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {debugMessages.map((m, i) => (
-              <p key={i} className="text-sm text-gray-500">
-                {m}
-              </p>
-            ))}
-          </div>
-        )}
       </div>
       <ul className="space-y-1">
         {teams.map((t) => (
