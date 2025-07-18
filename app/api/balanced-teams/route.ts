@@ -4,7 +4,7 @@ export async function POST(req: NextRequest) {
   const { players } = await req.json();
 
   const debug: string[] = [];
-  const prompt = `You are a helpful assistant. Create balanced two-player teams from the provided list of players. Each player has an id, offense and defense skill. Make the teams so that offense and defense are as evenly distributed as possible across all teams. Use names from The Lord of the Rings for the teams. Respond with JSON only in the format {"teams": [{"name": "string", "playerIds": [id1, id2]}]}.`;
+  const prompt = `You are a helpful assistant. Create balanced two-player teams from the provided list of players. Each player has an id, offense and defense skill. In each team one player will attack and the other will defend, so a team's offense is the higher offense value of its players and the defense is the higher defense value. Compose the pairs so that all teams have comparable offense and defense ratings and no team is an obvious favourite. Use names from The Lord of the Rings for the team names. Respond with JSON only in the format {"teams": [{"name": "string", "playerIds": [id1, id2]}]}.`;
 
   debug.push("Retrieving API key...");
   const apiKey = process.env.OPENAI_API_KEY;
