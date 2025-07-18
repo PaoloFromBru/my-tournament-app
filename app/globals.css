@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* simple fireworks animation used when a tournament winner is decided */
+.fireworks-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.firework {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: firework 700ms ease-out forwards;
+}
+
+@keyframes firework {
+  to {
+    transform: translate3d(var(--x), var(--y), 0) scale(0);
+    opacity: 0;
+  }
+}

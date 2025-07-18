@@ -28,6 +28,7 @@ export default function TournamentRunPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [scores, setScores] = useState<Record<number, { a: number; b: number }>>({});
+  const [celebrated, setCelebrated] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -103,6 +104,73 @@ export default function TournamentRunPage() {
   const teamName = (tid: number | null | undefined) =>
     teams.find((t) => t.id === tid)?.name || `Team ${tid}`;
 
+  const triggerFireworks = () => {
+    const container = document.createElement("div");
+    container.className = "fireworks-container";
+    for (let i = 0; i < 20; i++) {
+      const el = document.createElement("div");
+      el.className = "firework";
+      el.style.left = `${50}%`;
+      el.style.top = `${50}%`;
+      el.style.setProperty("--x", `${(Math.random() - 0.5) * 400}px`);
+      el.style.setProperty("--y", `${(Math.random() - 0.5) * 400}px`);
+      el.style.color = `hsl(${Math.random() * 360},100%,50%)`;
+      container.appendChild(el);
+    }
+    document.body.appendChild(container);
+    setTimeout(() => container.remove(), 800);
+  };
+
+  const nextRound = async () => {
+    if (!user) return;
+    const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
+    const currentRound = Math.max(...phaseNums, 1);
+    const currentMatches = matches.filter(
+      (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound
+    );
+    const winners = currentMatches.map((m) => m.winner).filter((w): w is number => Boolean(w));
+    if (winners.length !== currentMatches.length) return;
+
+    if (winners.length === 1) {
+      triggerFireworks();
+      return;
+    }
+
+    const pairs: { team_a: number; team_b: number }[] = [];
+    for (let i = 0; i < winners.length; i += 2) {
+      if (winners[i + 1] !== undefined) {
+        pairs.push({ team_a: winners[i], team_b: winners[i + 1] });
+      }
+    }
+
+    const nextRoundNum = currentRound + 1;
+    if (pairs.length) {
+      await supabase.from("matches").insert(
+        pairs.map((p) => ({
+          ...p,
+          phase: `round${nextRoundNum}`,
+          scheduled_at: null,
+          tournament_id: id,
+          user_id: user.id,
+        }))
+      );
+      const { data: newMatches } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", id)
+        .eq("user_id", user.id);
+      setMatches(newMatches || []);
+
+      const initial = { ...scores };
+      (newMatches || []).forEach((m) => {
+        if (!initial[m.id]) {
+          initial[m.id] = { a: m.score_a || 0, b: m.score_b || 0 };
+        }
+      });
+      setScores(initial);
+    }
+  };
+
   const saveResult = async (m: Match) => {
     if (!user) return;
     const sc = scores[m.id] || { a: 0, b: 0 };
@@ -119,7 +187,35 @@ export default function TournamentRunPage() {
     );
   };
 
-  const phases = Array.from(new Set(matches.map((m) => m.phase)));
+  const phases = Array.from(new Set(matches.map((m) => m.phase))).sort(
+    (a, b) =>
+      (parseInt(a.replace(/\D/g, "")) || 0) -
+      (parseInt(b.replace(/\D/g, "")) || 0)
+  );
+
+  const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
+  const currentRound = Math.max(...phaseNums, 1);
+  const currentMatches = matches.filter(
+    (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound
+  );
+  const allDone = currentMatches.length > 0 && currentMatches.every((m) => m.winner);
+  const hasNext = matches.some(
+    (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound + 1
+  );
+  const canAdvance = allDone && !hasNext && currentMatches.length > 1;
+
+  useEffect(() => {
+    if (celebrated) return;
+    const phaseNumsLocal = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
+    const maxRound = Math.max(...phaseNumsLocal, 1);
+    const finalMatches = matches.filter(
+      (m) => parseInt(m.phase.replace(/\D/g, "")) === maxRound
+    );
+    if (finalMatches.length === 1 && finalMatches[0].winner) {
+      triggerFireworks();
+      setCelebrated(true);
+    }
+  }, [matches, celebrated]);
 
   return (
     <div className="space-y-4">
@@ -187,6 +283,11 @@ export default function TournamentRunPage() {
           </div>
         ))}
       </div>
+      {canAdvance && (
+        <button className="border px-2" onClick={nextRound}>
+          Next Round
+        </button>
+      )}
     </div>
   );
 }
