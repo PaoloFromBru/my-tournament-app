@@ -10,16 +10,38 @@ interface Tournament {
 
 export default function TournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    supabase.from('tournaments').select('*').then(({ data }) => {
-      setTournaments(data || []);
-    });
+    const load = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      setUser(userData.user);
+      if (userData.user) {
+        const { data } = await supabase
+          .from('tournaments')
+          .select('*')
+          .eq('user_id', userData.user.id);
+        setTournaments(data || []);
+      } else {
+        setTournaments([]);
+      }
+    };
+    load();
   }, []);
 
   const deleteTournament = async (id: number) => {
+    if (!user) return;
     if (!confirm('Delete this tournament?')) return;
-    await supabase.from('tournaments').delete().eq('id', id);
+    await supabase
+      .from('matches')
+      .delete()
+      .eq('tournament_id', id)
+      .eq('user_id', user.id);
+    await supabase
+      .from('tournaments')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
     setTournaments((prev) => prev.filter((t) => t.id !== id));
   };
 
