@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import NavSelect from "../components/NavSelect";
+import NavButtons from "../components/NavButtons";
 import AuthButtons from "../components/AuthButtons";
 import LoginOverlay from "../components/LoginOverlay";
 
@@ -35,11 +35,11 @@ export default function RootLayout({
                 <img src="/babyfoot.svg" alt="Babyfoot" className="w-6 h-6" />
                 My Tournament App
               </a>
-              <NavSelect />
             </div>
             <div className="flex items-center gap-2 mt-2">
               <AuthButtons />
             </div>
+            <NavButtons />
           </header>
           <main className="p-4">{children}</main>
         </LoginOverlay>
