@@ -220,6 +220,20 @@ export default function TeamsPage() {
   const playerName = (id: number) =>
     players.find((p) => p.id === id)?.name || "";
 
+  const teamOffense = (ids: number[]) => {
+    const values = ids.map(
+      (pid) => players.find((p) => p.id === pid)?.offense ?? 0,
+    );
+    return Math.max(...values);
+  };
+
+  const teamDefense = (ids: number[]) => {
+    const values = ids.map(
+      (pid) => players.find((p) => p.id === pid)?.defense ?? 0,
+    );
+    return Math.max(...values);
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Teams</h2>
@@ -279,6 +293,9 @@ export default function TeamsPage() {
           <li key={t.id} className="flex items-center gap-2 border-b pb-1">
             <span className="flex-1">
               {t.name}: {t.playerIds.map(playerName).join(" & ")}
+              <span className="ml-2 text-sm text-gray-500">
+                O:{teamOffense(t.playerIds)} D:{teamDefense(t.playerIds)}
+              </span>
             </span>
             <button className="border px-2 py-0.5" onClick={() => editTeam(t)}>
               Edit
