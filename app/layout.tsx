@@ -29,14 +29,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <LoginOverlay>
-          <header className="p-4 flex flex-col">
-            <div className="flex items-center gap-4">
+          <header className="p-4 border-b">
+            <div className="flex items-center justify-between">
               <a href="/" className="flex items-center gap-2 text-xl font-bold">
                 <img src="/babyfoot.svg" alt="Babyfoot" className="w-6 h-6" />
                 My Tournament App
               </a>
-            </div>
-            <div className="flex items-center gap-2 mt-2">
               <AuthButtons />
             </div>
             <NavButtons />

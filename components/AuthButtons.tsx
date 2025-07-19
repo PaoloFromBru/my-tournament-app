@@ -37,19 +37,19 @@ export default function AuthButtons() {
     // Login overlay appears automatically when no user
   };
 
-  return (
-    <>
-      {user && <span>{user.email}</span>}
-      <button
-        className={
-          user
-            ? "bg-red-500 hover:bg-red-600 text-white px-2"
-            : "bg-green-500 hover:bg-green-600 text-white px-2"
-        }
-        onClick={user ? logout : login}
-      >
-        {user ? "Logout" : "Login"}
-      </button>
-    </>
+  return user ? (
+    <button
+      className="bg-rose-100 text-rose-700 text-sm px-3 py-1 rounded hover:bg-rose-200"
+      onClick={logout}
+    >
+      Logout
+    </button>
+  ) : (
+    <button
+      className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded"
+      onClick={login}
+    >
+      Login
+    </button>
   );
 }
