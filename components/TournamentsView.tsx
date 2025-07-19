@@ -1,37 +1,42 @@
 import { Button } from "@/components/ui/button";
 
 interface Team {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface Tournament {
-  id: number;
+  id: string;
   name: string;
-  teams: { id: number }[];
+  teams: { id: string }[];
 }
 
 interface Props {
   tournaments: Tournament[];
   teams: Team[];
   onSchedule: React.FormEventHandler<HTMLFormElement>;
-  onCreate: React.MouseEventHandler<HTMLButtonElement>;
-  onRun: (id: number) => void;
-  onView: (id: number) => void;
-  onDelete: (id: number) => void;
+  onRun: (id: string) => void;
+  onView: (id: string) => void;
+  onDelete: (id: string) => void;
+  loading?: boolean;
 }
 
 export default function TournamentsView({
   tournaments,
   teams,
   onSchedule,
-  onCreate,
   onRun,
   onView,
   onDelete,
+  loading,
 }: Props) {
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-8">
+    <div className="relative max-w-3xl mx-auto p-6 space-y-8">
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <img src="/babyfoot.svg" alt="loading" className="w-20 h-20 animate-spin" />
+        </div>
+      )}
       {/* Tournament Setup */}
       <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 space-y-4">
         <h2 className="text-xl font-semibold">Tournament Setup</h2>
@@ -70,10 +75,7 @@ export default function TournamentsView({
 
       {/* Tournaments List */}
       <section className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Tournaments</h2>
-          <Button variant="outline" onClick={onCreate}>Create New Tournament</Button>
-        </div>
+        <h2 className="text-xl font-semibold">Tournaments</h2>
 
         {tournaments.map((tournament) => (
           <div
