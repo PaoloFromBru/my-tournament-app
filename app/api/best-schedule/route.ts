@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
   }
 
   const prompt =
-    'You are an expert tournament organiser. Given a list of teams with their ids and names, create a schedule that minimises the number of rounds needed to determine a winner. Respond only with JSON in the format {"strategy":"string","matches":[{"round":1,"teamA":id,"teamB":id}]}.';
+    'You are an expert tournament organiser. Given a list of teams with their ids and names, create a knockout style schedule that includes **every** team. ' +
+    'If the number of teams is not a power of two, use play‑in games or byes so that all teams get a chance to compete. ' +
+    'Respond only with JSON in the format {"strategy":"string","matches":[{"round":1,"teamA":id,"teamB":id}]}.';
 
   debug.push("Key retrieved, contacting OpenAI...");
   try {
