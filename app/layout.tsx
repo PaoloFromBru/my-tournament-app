@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import NavButtons from "../components/NavButtons";
-import AuthButtons from "../components/AuthButtons";
+import Header from "../components/Header";
 import LoginOverlay from "../components/LoginOverlay";
 
 const geistSans = Geist({
@@ -29,16 +28,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <LoginOverlay>
-          <header className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <a href="/" className="flex items-center gap-2 text-xl font-bold">
-                <img src="/babyfoot.svg" alt="Babyfoot" className="w-6 h-6" />
-                My Tournament App
-              </a>
-              <AuthButtons />
-            </div>
-            <NavButtons />
-          </header>
+          <Header />
           <main className="p-4">{children}</main>
         </LoginOverlay>
       </body>
