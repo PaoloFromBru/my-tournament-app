@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import TournamentsView from "../../components/TournamentsView";
 import { supabase } from "../../lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
@@ -23,11 +23,7 @@ export default function TournamentsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [selected, setSelected] = useState<number[]>([]);
-  const [name, setName] = useState("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [debug, setDebug] = useState<string[]>([]);
-  const [loadingId, setLoadingId] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -55,37 +51,55 @@ export default function TournamentsPage() {
     load();
   }, []);
 
-  const toggleTeam = (id: number, checked: boolean) => {
-    setSelected((prev) => (checked ? [...prev, id] : prev.filter((tid) => tid !== id)));
-  };
-
-  const createTournament = async () => {
-    if (!user || !name || selected.length === 0) return;
-    setDebug([]);
+  const createTournamentRecord = async (name: string) => {
     const { data: inserted } = await supabase
       .from("tournaments")
-      .insert({
-        name,
-        user_id: user.id,
-      })
+      .insert({ name, user_id: user.id })
       .select()
       .single();
+    return inserted?.id;
+  };
 
-    if (inserted?.id) {
+  const handleSchedule = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user) return;
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("tournamentName") as HTMLInputElement).value;
+    const teamInputs = Array.from(
+      form.querySelectorAll<HTMLInputElement>("input[name='teamSelection']:checked")
+    );
+    const ids = teamInputs.map((inp) => Number(inp.value));
+    if (!name || ids.length === 0) return;
+
+    const insertedId = await createTournamentRecord(name);
+    if (insertedId) {
       await supabase
         .from("teams")
-        .update({ tournament_id: inserted.id })
-        .in("id", selected)
+        .update({ tournament_id: insertedId })
+        .in("id", ids)
         .eq("user_id", user.id);
+
       setTournaments((prev) => [
         ...prev,
-        { id: inserted.id, name: inserted.name, teams: selected.map((id) => ({ id })) },
+        { id: insertedId, name, teams: ids.map((id) => ({ id })) },
       ]);
-      await generateSchedule(inserted.id);
+      await generateSchedule(insertedId);
     }
 
-    setName("");
-    setSelected([]);
+    form.reset();
+  };
+
+  const createEmptyTournament = async () => {
+    if (!user) return;
+    const name = window.prompt("Tournament name") || "";
+    if (!name) return;
+    const insertedId = await createTournamentRecord(name);
+    if (insertedId) {
+      setTournaments((prev) => [
+        ...prev,
+        { id: insertedId, name, teams: [] },
+      ]);
+    }
   };
 
   const deleteTournament = async (id: number) => {
@@ -110,11 +124,9 @@ export default function TournamentsPage() {
   };
 
   async function generateSchedule(id: number) {
-    setLoadingId(id);
     const { data: userData } = await supabase.auth.getUser();
     const currentUser = userData.user;
     if (!currentUser) {
-      setLoadingId(null);
       return;
     }
 
@@ -126,7 +138,6 @@ export default function TournamentsPage() {
 
     const tms = teamData || [];
     if (tms.length < 2) {
-      setLoadingId(null);
       return;
     }
 
@@ -134,7 +145,6 @@ export default function TournamentsPage() {
     let schedule: { matches: { round: number; teamA: number; teamB: number }[] } & {
       debug?: string[];
     } = { matches: [] };
-    let debugInfo: string[] = [];
 
     if (isPower(tms.length)) {
       const pairs = [] as { round: number; teamA: number; teamB: number }[];
@@ -153,9 +163,7 @@ export default function TournamentsPage() {
       const json = await res.json();
       if (res.ok) {
         schedule = json;
-      }
-      debugInfo = json.debug || [];
-      if (!res.ok) {
+      } else {
         alert(json.error || "AI schedule failed");
       }
     }
@@ -178,55 +186,18 @@ export default function TournamentsPage() {
         }))
       );
     }
-
-    setLoadingId(null);
-    setDebug(debugInfo);
   }
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold">Tournament Setup</h2>
-        <div className="space-y-2">
-          <input
-            className="border p-1"
-            placeholder="Tournament name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <h3 className="font-semibold">Select Teams</h3>
-          <div className="space-x-2">
-            {teams.map((t) => (
-              <label key={t.id} className="space-x-1">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(t.id)}
-                  onChange={(e) => toggleTeam(t.id, e.target.checked)}
-                />
-                <span>{t.name}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <button
-          className="border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
-          onClick={createTournament}
-          disabled={!name || selected.length === 0}
-        >
-          AI schedule
-        </button>
-        {debug.length > 0 && (
-          <pre className="border p-2 text-sm whitespace-pre-wrap">{debug.join("\n")}</pre>
-        )}
-      </div>
-      <TournamentsView
-        tournaments={tournaments}
-        onRun={(id) => router.push(`/run/${id}`)}
-        onView={(id) => router.push(`/tournaments/${id}`)}
-        onDelete={deleteTournament}
-      />
-    </div>
+    <TournamentsView
+      tournaments={tournaments}
+      teams={teams}
+      onSchedule={handleSchedule}
+      onCreate={createEmptyTournament}
+      onRun={(id) => router.push(`/run/${id}`)}
+      onView={(id) => router.push(`/tournaments/${id}`)}
+      onDelete={deleteTournament}
+    />
   );
 }
+
