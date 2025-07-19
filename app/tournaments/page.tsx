@@ -135,7 +135,7 @@ export default function TournamentsPage() {
     }
 
     const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
-    let schedule: { matches: { round: number; teamA: number; teamB: number }[] } & {
+    let schedule: { matches: { round: number; teamA: number | null; teamB: number | null; winner?: number | null }[] } & {
       debug?: string[];
     } = { matches: [] };
 
@@ -156,6 +156,14 @@ export default function TournamentsPage() {
       const json = await res.json();
       if (res.ok) {
         schedule = json;
+        schedule.matches = schedule.matches.map((m: any) => {
+          const teamA = m.teamA === "bye" || m.teamA === "null" ? null : m.teamA;
+          const teamB = m.teamB === "bye" || m.teamB === "null" ? null : m.teamB;
+          let winner = null as number | null;
+          if (teamA && !teamB) winner = teamA;
+          if (teamB && !teamA) winner = teamB;
+          return { round: m.round, teamA, teamB, winner };
+        });
       } else {
         alert(json.error || "AI schedule failed");
       }
@@ -172,6 +180,7 @@ export default function TournamentsPage() {
         schedule.matches.map((m) => ({
           team_a: m.teamA,
           team_b: m.teamB,
+          winner: m.winner,
           phase: `round${m.round}`,
           scheduled_at: null,
           tournament_id: id,

@@ -107,7 +107,9 @@ export default function TournamentRunPage() {
   }, [id]);
 
   const teamName = (tid: number | null | undefined) =>
-    teams.find((t) => t.id === tid)?.name || "Unknown team";
+    tid === null || tid === undefined
+      ? "BYE"
+      : teams.find((t) => t.id === tid)?.name || "Unknown team";
 
   const triggerFireworks = () => {
     const container = document.createElement("div");
