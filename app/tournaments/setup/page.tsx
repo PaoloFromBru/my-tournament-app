@@ -120,11 +120,11 @@ export default function TournamentSetupPage() {
         </label>
       </div>
       <button
-        className="border border-green-500 px-2"
+        className="border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
         onClick={createTournament}
         disabled={!name || selected.length === 0}
       >
-        Create Tournament
+        Knockout tournament
       </button>
     </div>
   );

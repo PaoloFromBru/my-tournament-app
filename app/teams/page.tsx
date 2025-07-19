@@ -254,23 +254,23 @@ export default function TeamsPage() {
             </label>
           ))}
           <button
-            className="border border-green-500 px-2"
+            className="border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
             onClick={addTeam}
             disabled={selected.length !== 2 || !teamName}
           >
             {editingId ? "Update" : "Add"}
           </button>
-          <button className="border px-2" onClick={generateBalancedTeams}>
+          <button className="border bg-gray-200 px-2" onClick={generateBalancedTeams}>
             Balanced teams
           </button>
           {editingId && (
-            <button className="border px-2" onClick={resetForm}>
+            <button className="border bg-gray-200 px-2" onClick={resetForm}>
               Cancel
             </button>
           )}
         </div>
       </div>
-      <ul className="space-y-1">
+      <ul className="space-y-1 bg-gray-100 p-2 rounded">
         {teams.map((t) => (
           <li key={t.id} className="flex items-center gap-2 border-b pb-1">
             <span className="flex-1">
@@ -279,11 +279,11 @@ export default function TeamsPage() {
                 O:{teamOffense(t.playerIds)} D:{teamDefense(t.playerIds)}
               </span>
             </span>
-            <button className="border border-blue-500 px-2 py-0.5" onClick={() => editTeam(t)}>
+            <button className="border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5" onClick={() => editTeam(t)}>
               Edit
             </button>
             <button
-              className="border border-orange-500 px-2 py-0.5"
+              className="border border-orange-500 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5"
               onClick={() => deleteTeam(t.id)}
             >
               Delete

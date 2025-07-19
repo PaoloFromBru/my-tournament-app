@@ -184,16 +184,19 @@ export default function PlayersPage() {
           value={defense}
           onChange={(e) => setDefense(Number(e.target.value))}
         />
-        <button className="border border-green-500 px-2" onClick={addOrUpdate}>
+        <button
+          className="mt-2 border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
+          onClick={addOrUpdate}
+        >
           {editing ? "Update" : "Add"}
         </button>
         {editing && (
-          <button className="border px-2" onClick={resetForm}>
+          <button className="mt-2 border bg-gray-200 px-2" onClick={resetForm}>
             Cancel
           </button>
         )}
       </div>
-      <ul className="space-y-1">
+      <ul className="space-y-1 bg-gray-100 p-2 rounded">
         {players.map((p) => (
           <li key={p.id} className="border-b pb-2">
             <div className="flex items-center gap-2">
@@ -201,13 +204,22 @@ export default function PlayersPage() {
                 {p.name}{" "}
                 <span className="text-sm text-gray-500">O:{p.offense} D:{p.defense}</span>
               </span>
-              <button className="border border-blue-500 px-2 py-0.5" onClick={() => edit(p)}>
+              <button
+                className="border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5"
+                onClick={() => edit(p)}
+              >
                 Edit
               </button>
-              <button className="border border-yellow-500 px-2 py-0.5" onClick={() => editSkills(p)}>
+              <button
+                className="border border-yellow-500 bg-yellow-500 hover:bg-yellow-600 text-black px-2 py-0.5"
+                onClick={() => editSkills(p)}
+              >
                 Change skills
               </button>
-              <button className="border border-orange-500 px-2 py-0.5" onClick={() => deletePlayer(p.id)}>
+              <button
+                className="border border-orange-500 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5"
+                onClick={() => deletePlayer(p.id)}
+              >
                 Delete
               </button>
             </div>
@@ -225,10 +237,13 @@ export default function PlayersPage() {
                   value={skillDefense}
                   onChange={(e) => setSkillDefense(Number(e.target.value))}
                 />
-                <button className="border border-yellow-500 px-2" onClick={() => updateSkills(p.id)}>
+                <button
+                  className="border border-yellow-500 bg-yellow-500 hover:bg-yellow-600 text-black px-2"
+                  onClick={() => updateSkills(p.id)}
+                >
                   Save
                 </button>
-                <button className="border px-2" onClick={() => setSkillEditing(null)}>
+                <button className="border bg-gray-200 px-2" onClick={() => setSkillEditing(null)}>
                   Cancel
                 </button>
               </div>

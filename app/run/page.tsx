@@ -31,10 +31,10 @@ export default function RunPage() {
             </span>
             {!m.winner ? (
               <>
-                <button className="border px-2" onClick={() => setWinner(m.id, m.teamA)}>
+                <button className="border bg-gray-200 px-2" onClick={() => setWinner(m.id, m.teamA)}>
                   {m.teamA} wins
                 </button>
-                <button className="border px-2" onClick={() => setWinner(m.id, m.teamB)}>
+                <button className="border bg-gray-200 px-2" onClick={() => setWinner(m.id, m.teamB)}>
                   {m.teamB} wins
                 </button>
               </>
