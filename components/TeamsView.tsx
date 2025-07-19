@@ -17,7 +17,7 @@ interface Props {
   teams: Team[];
   players: Player[];
   onAdd: React.FormEventHandler<HTMLFormElement>;
-  onEdit: (id: number) => void;
+  onEdit: (team: Team) => void;
   onDelete: (id: number) => void;
   onGenerateBalanced: () => void;
 }
@@ -104,7 +104,7 @@ export default function TeamsView({
             </div>
 
             <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
-              <Button className="bg-blue-500 hover:bg-blue-600" onClick={() => onEdit(team.id)}>
+              <Button className="bg-blue-500 hover:bg-blue-600" onClick={() => onEdit(team)}>
                 Edit
               </Button>
               <Button variant="destructive" onClick={() => onDelete(team.id)}>
