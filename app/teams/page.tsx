@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import TeamsView from "../../components/TeamsView";
 import { supabase } from "../../lib/supabaseBrowser";
 
 interface Player {
@@ -20,9 +21,6 @@ export default function TeamsPage() {
   const [user, setUser] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<TeamRow[]>([]);
-  const [teamName, setTeamName] = useState("");
-  const [selected, setSelected] = useState<number[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -59,48 +57,32 @@ export default function TeamsPage() {
     load();
   }, []);
 
-  const resetForm = () => {
-    setTeamName("");
-    setSelected([]);
-    setEditingId(null);
-  };
 
-  const addTeam = async () => {
-    if (!user || selected.length !== 2 || !teamName) return;
+  const addTeam = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user) return;
 
-    let teamId = editingId;
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("teamName") as HTMLInputElement).value;
+    const memberInputs = Array.from(
+      form.querySelectorAll<HTMLInputElement>("input[name='members']:checked"),
+    );
+    const memberIds = memberInputs.map((inp) => Number(inp.value));
 
-    if (editingId !== null) {
-      await supabase
-        .from("teams")
-        .update({ name: teamName })
-        .eq("id", editingId)
-        .eq("user_id", user.id);
+    if (!name || memberIds.length !== 2) return;
 
-      await supabase
-        .from("team_players")
-        .delete()
-        .eq("team_id", editingId)
-        .eq("user_id", user.id);
-    } else {
-      const { data: inserted } = await supabase
-        .from("teams")
-        .insert({ name: teamName, user_id: user.id })
-        .select()
-        .single();
-      teamId = inserted?.id ?? null;
-    }
+    const { data: inserted } = await supabase
+      .from("teams")
+      .insert({ name, user_id: user.id })
+      .select()
+      .single();
+
+    const teamId = inserted?.id;
 
     if (teamId) {
-      await supabase
-        .from("team_players")
-        .insert(
-          selected.map((pid) => ({
-            team_id: teamId,
-            player_id: pid,
-            user_id: user.id,
-          })),
-        );
+      await supabase.from("team_players").insert(
+        memberIds.map((pid) => ({ team_id: teamId, player_id: pid, user_id: user.id })),
+      );
     }
 
     const { data: teamRows } = await supabase
@@ -122,13 +104,60 @@ export default function TeamsPage() {
     }));
 
     setTeams(combined);
-    resetForm();
+    form.reset();
   };
 
-  const editTeam = (t: TeamRow) => {
-    setTeamName(t.name);
-    setSelected(t.playerIds);
-    setEditingId(t.id);
+  const editTeam = async (team: TeamRow) => {
+    if (!user) return;
+    const name = window.prompt("Team name", team.name) ?? team.name;
+    const idsStr = window.prompt(
+      `Player IDs (comma separated, choose two from ${players
+        .map((p) => p.id)
+        .join(", ")})`,
+      team.playerIds.join(","),
+    );
+    const ids = idsStr
+      ? idsStr
+          .split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => !isNaN(n))
+          .slice(0, 2)
+      : team.playerIds;
+    if (!name || ids.length !== 2) return;
+
+    await supabase
+      .from("teams")
+      .update({ name })
+      .eq("id", team.id)
+      .eq("user_id", user.id);
+
+    await supabase
+      .from("team_players")
+      .delete()
+      .eq("team_id", team.id)
+      .eq("user_id", user.id);
+
+    await supabase.from("team_players").insert(
+      ids.map((pid) => ({ team_id: team.id, player_id: pid, user_id: user.id })),
+    );
+
+    const { data: teamRows } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("user_id", user.id);
+    const { data: teamPlayerRows } = await supabase
+      .from("team_players")
+      .select("*")
+      .eq("user_id", user.id);
+    const combined: TeamRow[] = (teamRows || []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      playerIds: (teamPlayerRows || [])
+        .filter((tp) => tp.team_id === t.id)
+        .map((tp) => tp.player_id),
+    }));
+
+    setTeams(combined);
   };
 
   const deleteTeam = async (id: number) => {
@@ -208,89 +237,14 @@ export default function TeamsPage() {
     setTeams(combined);
   };
 
-  const playerName = (id: number) =>
-    players.find((p) => p.id === id)?.name || "";
-
-  const teamOffense = (ids: number[]) => {
-    const values = ids.map(
-      (pid) => players.find((p) => p.id === pid)?.offense ?? 0,
-    );
-    return Math.max(...values);
-  };
-
-  const teamDefense = (ids: number[]) => {
-    const values = ids.map(
-      (pid) => players.find((p) => p.id === pid)?.defense ?? 0,
-    );
-    return Math.max(...values);
-  };
-
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold">Teams</h2>
-      <div className="space-y-2">
-        <input
-          className="border p-1"
-          placeholder="Team name"
-          value={teamName}
-          onChange={(e) => setTeamName(e.target.value)}
-        />
-        <div className="space-x-2">
-          {players.map((p) => (
-            <label key={p.id} className="space-x-1">
-              <input
-                type="checkbox"
-                checked={selected.includes(p.id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelected([...selected, p.id]);
-                  } else {
-                    setSelected(selected.filter((id) => id !== p.id));
-                  }
-                }}
-                disabled={!selected.includes(p.id) && selected.length === 2}
-              />
-              <span>{p.name}</span>
-            </label>
-          ))}
-          <button
-            className="border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
-            onClick={addTeam}
-            disabled={selected.length !== 2 || !teamName}
-          >
-            {editingId ? "Update" : "Add"}
-          </button>
-          <button className="border bg-gray-200 px-2" onClick={generateBalancedTeams}>
-            Balanced teams
-          </button>
-          {editingId && (
-            <button className="border bg-gray-200 px-2" onClick={resetForm}>
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
-      <ul className="space-y-1 bg-gray-100 p-2 rounded">
-        {teams.map((t) => (
-          <li key={t.id} className="flex items-center gap-2 border-b pb-1">
-            <span className="flex-1">
-              {t.name}: {t.playerIds.map(playerName).join(" & ")}
-              <span className="ml-2 text-sm text-gray-500">
-                O:{teamOffense(t.playerIds)} D:{teamDefense(t.playerIds)}
-              </span>
-            </span>
-            <button className="border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5" onClick={() => editTeam(t)}>
-              Edit
-            </button>
-            <button
-              className="border border-orange-500 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5"
-              onClick={() => deleteTeam(t.id)}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <TeamsView
+      teams={teams}
+      players={players}
+      onAdd={addTeam}
+      onEdit={editTeam}
+      onDelete={deleteTeam}
+      onGenerateBalanced={generateBalancedTeams}
+    />
   );
 }
