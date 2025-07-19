@@ -1,10 +1,12 @@
 import { MouseEventHandler, ReactNode } from "react";
 
+type BuiltInVariant = "default" | "outline" | "destructive";
+
 interface ButtonProps {
   children: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  variant?: string;
+  variant?: BuiltInVariant | string;
 }
 
 export function Button({ children, className = "", onClick, variant = "default" }: ButtonProps) {
@@ -16,8 +18,13 @@ export function Button({ children, className = "", onClick, variant = "default" 
     destructive: "bg-red-600 text-white hover:bg-red-700",
   };
 
+  const variantClass =
+    Object.prototype.hasOwnProperty.call(variants, variant) && variant
+      ? (variants as Record<BuiltInVariant, string>)[variant as BuiltInVariant]
+      : variant;
+
   return (
-    <button className={`${base} ${variants[variant] || variant} ${className}`} onClick={onClick}>
+    <button className={`${base} ${variantClass} ${className}`.trim()} onClick={onClick}>
       {children}
     </button>
   );
