@@ -5,16 +5,16 @@ import { supabase } from "../../lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
 
 interface Team {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface TournamentTeam {
-  id: number;
+  id: string;
 }
 
 interface Tournament {
-  id: number;
+  id: string;
   name: string;
   teams: TournamentTeam[];
 }
@@ -24,6 +24,7 @@ export default function TournamentsPage() {
   const [user, setUser] = useState<any>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -68,29 +69,33 @@ export default function TournamentsPage() {
     const teamInputs = Array.from(
       form.querySelectorAll<HTMLInputElement>("input[name='teamSelection']:checked")
     );
-    const ids = teamInputs.map((inp) => Number(inp.value));
+    const ids = teamInputs.map((inp) => inp.value);
     if (!name || ids.length === 0) return;
 
-    const insertedId = await createTournamentRecord(name);
-    if (insertedId) {
-      await supabase
-        .from("teams")
-        .update({ tournament_id: insertedId })
-        .in("id", ids)
-        .eq("user_id", user.id);
+    setLoading(true);
+    try {
+      const insertedId = await createTournamentRecord(name);
+      if (insertedId) {
+        await supabase
+          .from("teams")
+          .update({ tournament_id: insertedId })
+          .in("id", ids)
+          .eq("user_id", user.id);
 
-      setTournaments((prev) => [
-        ...prev,
-        { id: insertedId, name, teams: ids.map((id) => ({ id })) },
-      ]);
-      await generateSchedule(insertedId);
+        setTournaments((prev) => [
+          ...prev,
+          { id: insertedId, name, teams: ids.map((id) => ({ id })) },
+        ]);
+        await generateSchedule(insertedId);
+      }
+    } finally {
+      setLoading(false);
+      form.reset();
     }
-
-    form.reset();
   };
 
 
-  const deleteTournament = async (id: number) => {
+  const deleteTournament = async (id: string) => {
     if (!user) return;
     if (!confirm("Delete this tournament?")) return;
     await supabase
@@ -111,7 +116,7 @@ export default function TournamentsPage() {
     setTournaments((prev) => prev.filter((t) => t.id !== id));
   };
 
-  async function generateSchedule(id: number) {
+  async function generateSchedule(id: string) {
     const { data: userData } = await supabase.auth.getUser();
     const currentUser = userData.user;
     if (!currentUser) {
@@ -184,6 +189,7 @@ export default function TournamentsPage() {
       onRun={(id) => router.push(`/run/${id}`)}
       onView={(id) => router.push(`/tournaments/${id}`)}
       onDelete={deleteTournament}
+      loading={loading}
     />
   );
 }
