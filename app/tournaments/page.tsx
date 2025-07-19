@@ -18,10 +18,9 @@ export default function TournamentsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [name, setName] = useState("");
-  const [maxDuration, setMaxDuration] = useState("15 minutes");
-  const [format, setFormat] = useState("direct elimination");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [debug, setDebug] = useState<string[]>([]);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -55,8 +54,7 @@ export default function TournamentsPage() {
       .from("tournaments")
       .insert({
         name,
-        max_duration: maxDuration,
-        format,
+        
         user_id: user.id,
       })
       .select()
@@ -92,8 +90,6 @@ export default function TournamentsPage() {
 
     setName("");
     setSelected([]);
-    setMaxDuration("15 minutes");
-    setFormat("direct elimination");
   };
 
   const deleteTournament = async (id: number) => {
@@ -115,6 +111,80 @@ export default function TournamentsPage() {
       .eq("id", id)
       .eq("user_id", user.id);
     setTournaments((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const generateSchedule = async (id: number) => {
+    setLoadingId(id);
+    const { data: userData } = await supabase.auth.getUser();
+    const currentUser = userData.user;
+    if (!currentUser) {
+      setLoadingId(null);
+      return;
+    }
+
+    const { data: teamData } = await supabase
+      .from("teams")
+      .select("id, name")
+      .eq("user_id", currentUser.id)
+      .eq("tournament_id", id);
+
+    const tms = teamData || [];
+    if (tms.length < 2) {
+      setLoadingId(null);
+      return;
+    }
+
+    const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
+    let schedule: { matches: { round: number; teamA: number; teamB: number }[] } & {
+      debug?: string[];
+    } = { matches: [] };
+    let debugInfo: string[] = [];
+
+    if (isPower(tms.length)) {
+      const pairs = [] as { round: number; teamA: number; teamB: number }[];
+      for (let i = 0; i < tms.length; i += 2) {
+        if (tms[i + 1]) {
+          pairs.push({ round: 1, teamA: tms[i].id, teamB: tms[i + 1].id });
+        }
+      }
+      schedule.matches = pairs;
+    } else {
+      const res = await fetch("/api/best-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teams: tms }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        schedule = json;
+      }
+      debugInfo = json.debug || [];
+      if (!res.ok) {
+        alert(json.error || "AI schedule failed");
+      }
+    }
+
+    await supabase
+      .from("matches")
+      .delete()
+      .eq("tournament_id", id)
+      .eq("user_id", currentUser.id);
+
+    if (schedule.matches.length) {
+      await supabase.from("matches").insert(
+        schedule.matches.map((m) => ({
+          team_a: m.teamA,
+          team_b: m.teamB,
+          phase: `round${m.round}`,
+          scheduled_at: null,
+          tournament_id: id,
+          user_id: currentUser.id,
+        }))
+      );
+    }
+
+    setLoadingId(null);
+    setDebug(debugInfo);
   };
 
   return (
@@ -144,41 +214,12 @@ export default function TournamentsPage() {
             ))}
           </div>
         </div>
-        <div className="space-y-2">
-          <label className="block">
-            <span className="mr-2">Max duration:</span>
-            <select
-              className="border p-1"
-              value={maxDuration}
-              onChange={(e) => setMaxDuration(e.target.value)}
-            >
-              <option value="15 minutes">15 minutes</option>
-              <option value="30 minutes">30 minutes</option>
-              <option value="1 hour">1 hour</option>
-              <option value="2 hours">2 hours</option>
-            </select>
-          </label>
-        </div>
-        <div className="space-y-2">
-          <label className="block">
-            <span className="mr-2">Format:</span>
-            <select
-              className="border p-1"
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-            >
-              <option value="direct elimination">direct elimination</option>
-              <option value="Italian tournament">Italian tournament</option>
-              <option value="mixed">mixed</option>
-            </select>
-          </label>
-        </div>
         <button
-          className="border border-green-500 px-2"
+          className="border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
           onClick={createTournament}
           disabled={!name || selected.length === 0}
         >
-          Create Tournament
+          Knockout tournament
         </button>
         {debug.length > 0 && (
           <pre className="border p-2 text-sm whitespace-pre-wrap">{debug.join("\n")}</pre>
@@ -186,17 +227,33 @@ export default function TournamentsPage() {
       </div>
       <div className="space-y-4">
         <h2 className="text-xl font-bold">Tournaments</h2>
-        <ul className="space-y-1">
+        <ul className="space-y-1 bg-gray-100 p-2 rounded">
           {tournaments.map((t) => (
             <li key={t.id} className="flex items-center gap-2 border-b pb-1">
               <span className="flex-1">{t.name}</span>
-              <Link href={`/run/${t.id}`} className="border px-2 py-0.5">
+              <Link
+                href={`/run/${t.id}`}
+                className="border px-2 py-0.5 border-red-500 bg-red-500 hover:bg-red-600 text-white"
+              >
                 Run
               </Link>
-              <Link href={`/tournaments/${t.id}`} className="border px-2 py-0.5">
+              <Link
+                href={`/tournaments/${t.id}`}
+                className="border px-2 py-0.5 border-yellow-500 bg-yellow-500 hover:bg-yellow-600 text-black"
+              >
                 View
               </Link>
-              <button className="border border-orange-500 px-2 py-0.5" onClick={() => deleteTournament(t.id)}>
+              <button
+                className="border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5"
+                onClick={() => generateSchedule(t.id)}
+                disabled={loadingId === t.id}
+              >
+                {loadingId === t.id ? "Building..." : "AI Schedule"}
+              </button>
+              <button
+                className="border border-orange-500 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5"
+                onClick={() => deleteTournament(t.id)}
+              >
                 Delete
               </button>
             </li>

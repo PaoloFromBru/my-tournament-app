@@ -290,7 +290,7 @@ export default function TournamentRunPage() {
         ))}
       </div>
       {canAdvance && (
-        <button className="border px-2" onClick={nextRound}>
+        <button className="border bg-gray-200 px-2" onClick={nextRound}>
           Next Round
         </button>
       )}

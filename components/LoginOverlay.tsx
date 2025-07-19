@@ -112,10 +112,10 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
                 onChange={(e) => setPassword(e.target.value)}
               />
               <div className="flex gap-2">
-                <button className="border px-2" onClick={loginUser}>
+                <button className="border bg-gray-200 px-2" onClick={loginUser}>
                   Login
                 </button>
-                <button className="border px-2" onClick={() => setPhase("register")}>Register</button>
+                <button className="border bg-gray-200 px-2" onClick={() => setPhase("register")}>Register</button>
               </div>
               <button className="text-sm underline" onClick={() => setPhase("reset")}>Forgot password?</button>
             </>
@@ -137,8 +137,8 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
                 onChange={(e) => setPassword(e.target.value)}
               />
               <div className="flex gap-2">
-                <button className="border px-2" onClick={registerUser}>Register</button>
-                <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+                <button className="border bg-gray-200 px-2" onClick={registerUser}>Register</button>
+                <button className="border bg-gray-200 px-2" onClick={() => setPhase("login")}>Back</button>
               </div>
             </>
           )}
@@ -152,8 +152,8 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
                 onChange={(e) => setCode(e.target.value)}
               />
               <div className="flex gap-2">
-                <button className="border px-2" onClick={verify}>Verify</button>
-                <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+                <button className="border bg-gray-200 px-2" onClick={verify}>Verify</button>
+                <button className="border bg-gray-200 px-2" onClick={() => setPhase("login")}>Back</button>
               </div>
             </>
           )}
@@ -167,8 +167,8 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
                 onChange={(e) => setEmail(e.target.value)}
               />
               <div className="flex gap-2">
-                <button className="border px-2" onClick={resetPassword}>Send Email</button>
-                <button className="border px-2" onClick={() => setPhase("login")}>Back</button>
+                <button className="border bg-gray-200 px-2" onClick={resetPassword}>Send Email</button>
+                <button className="border bg-gray-200 px-2" onClick={() => setPhase("login")}>Back</button>
               </div>
             </>
           )}
@@ -183,7 +183,7 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
                 onChange={(e) => setPassword(e.target.value)}
               />
               <div className="flex gap-2">
-                <button className="border px-2" onClick={updatePassword}>Update</button>
+                <button className="border bg-gray-200 px-2" onClick={updatePassword}>Update</button>
               </div>
             </>
           )}
