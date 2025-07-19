@@ -144,18 +144,42 @@ export default function TournamentRunPage() {
       return;
     }
 
-    const pairs: { team_a: number; team_b: number }[] = [];
-    for (let i = 0; i < winners.length; i += 2) {
-      if (winners[i + 1] !== undefined) {
-        pairs.push({ team_a: winners[i], team_b: winners[i + 1] });
+    const byeCounts: Record<number, number> = {};
+    matches.forEach((m) => {
+      if ((m.team_a && !m.team_b) || (m.team_b && !m.team_a)) {
+        const id = (m.team_a || m.team_b) as number;
+        byeCounts[id] = (byeCounts[id] || 0) + 1;
+      }
+    });
+
+    const pairings: { team_a: number; team_b: number | null; winner?: number }[] = [];
+    const ordered = [...winners];
+
+    if (ordered.length % 2 === 1) {
+      let byeTeam = ordered[0];
+      for (const id of ordered) {
+        const count = byeCounts[id] || 0;
+        if (count < (byeCounts[byeTeam] || 0)) {
+          byeTeam = id;
+        }
+      }
+      ordered.splice(ordered.indexOf(byeTeam), 1);
+      pairings.push({ team_a: byeTeam, team_b: null, winner: byeTeam });
+    }
+
+    for (let i = 0; i < ordered.length; i += 2) {
+      if (ordered[i + 1] !== undefined) {
+        pairings.push({ team_a: ordered[i], team_b: ordered[i + 1] });
       }
     }
 
     const nextRoundNum = currentRound + 1;
-    if (pairs.length) {
+    if (pairings.length) {
       await supabase.from("matches").insert(
-        pairs.map((p) => ({
-          ...p,
+        pairings.map((p) => ({
+          team_a: p.team_a,
+          team_b: p.team_b,
+          winner: p.winner,
           phase: `round${nextRoundNum}`,
           scheduled_at: null,
           tournament_id: id,

@@ -156,14 +156,16 @@ export default function TournamentsPage() {
       const json = await res.json();
       if (res.ok) {
         schedule = json;
-        schedule.matches = schedule.matches.map((m: any) => {
-          const teamA = m.teamA === "bye" || m.teamA === "null" ? null : m.teamA;
-          const teamB = m.teamB === "bye" || m.teamB === "null" ? null : m.teamB;
-          let winner = null as number | null;
-          if (teamA && !teamB) winner = teamA;
-          if (teamB && !teamA) winner = teamB;
-          return { round: m.round, teamA, teamB, winner };
-        });
+        schedule.matches = schedule.matches
+          .map((m: any) => {
+            const teamA = m.teamA === "bye" || m.teamA === "null" ? null : m.teamA;
+            const teamB = m.teamB === "bye" || m.teamB === "null" ? null : m.teamB;
+            let winner = null as number | null;
+            if (teamA && !teamB) winner = teamA;
+            if (teamB && !teamA) winner = teamB;
+            return { round: m.round, teamA, teamB, winner };
+          })
+          .filter((m: any) => m.round === 1);
       } else {
         alert(json.error || "AI schedule failed");
       }
