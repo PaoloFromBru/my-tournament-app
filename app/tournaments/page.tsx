@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import TournamentsView from "../../components/TournamentsView";
 import { supabase } from "../../lib/supabaseBrowser";
+import { useRouter } from "next/navigation";
 
 interface Team {
   id: number;
@@ -11,9 +12,11 @@ interface Team {
 interface Tournament {
   id: number;
   name: string;
+  teams: Team[];
 }
 
 export default function TournamentsPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
@@ -35,9 +38,14 @@ export default function TournamentsPage() {
 
         const { data: tourData } = await supabase
           .from("tournaments")
-          .select("*")
+          .select("id, name, teams(id)")
           .eq("user_id", userData.user.id);
-        setTournaments(tourData || []);
+        const converted = (tourData || []).map((t) => ({
+          id: t.id,
+          name: t.name,
+          teams: t.teams || [],
+        }));
+        setTournaments(converted);
       }
     };
     load();
@@ -66,7 +74,10 @@ export default function TournamentsPage() {
         .update({ tournament_id: inserted.id })
         .in("id", selected)
         .eq("user_id", user.id);
-      setTournaments((prev) => [...prev, inserted]);
+      setTournaments((prev) => [
+        ...prev,
+        { id: inserted.id, name: inserted.name, teams: selected.map((id) => ({ id })) },
+      ]);
     }
 
     const teamsForSchedule = teams.filter((t) => selected.includes(t.id));
@@ -225,41 +236,13 @@ export default function TournamentsPage() {
           <pre className="border p-2 text-sm whitespace-pre-wrap">{debug.join("\n")}</pre>
         )}
       </div>
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold">Tournaments</h2>
-        <ul className="space-y-1 bg-gray-100 p-2 rounded">
-          {tournaments.map((t) => (
-            <li key={t.id} className="flex items-center gap-2 border-b pb-1">
-              <span className="flex-1">{t.name}</span>
-              <Link
-                href={`/run/${t.id}`}
-                className="border px-2 py-0.5 border-red-500 bg-red-500 hover:bg-red-600 text-white"
-              >
-                Run
-              </Link>
-              <Link
-                href={`/tournaments/${t.id}`}
-                className="border px-2 py-0.5 border-yellow-500 bg-yellow-500 hover:bg-yellow-600 text-black"
-              >
-                View
-              </Link>
-              <button
-                className="border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5"
-                onClick={() => generateSchedule(t.id)}
-                disabled={loadingId === t.id}
-              >
-                {loadingId === t.id ? "Building..." : "AI Schedule"}
-              </button>
-              <button
-                className="border border-orange-500 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5"
-                onClick={() => deleteTournament(t.id)}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <TournamentsView
+        tournaments={tournaments}
+        onRun={(id) => router.push(`/run/${id}`)}
+        onView={(id) => router.push(`/tournaments/${id}`)}
+        onSchedule={generateSchedule}
+        onDelete={deleteTournament}
+      />
     </div>
   );
 }
