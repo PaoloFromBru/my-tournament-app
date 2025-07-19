@@ -38,12 +38,15 @@ export default function AuthButtons() {
   };
 
   return user ? (
-    <button
-      className="bg-rose-100 text-rose-700 text-sm px-3 py-1 rounded hover:bg-rose-200"
-      onClick={logout}
-    >
-      Logout
-    </button>
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-700">{user.email}</span>
+      <button
+        className="bg-rose-100 text-rose-700 text-sm px-3 py-1 rounded hover:bg-rose-200"
+        onClick={logout}
+      >
+        Logout
+      </button>
+    </div>
   ) : (
     <button
       className="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded"

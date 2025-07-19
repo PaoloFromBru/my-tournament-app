@@ -124,7 +124,7 @@ export default function TournamentSetupPage() {
         onClick={createTournament}
         disabled={!name || selected.length === 0}
       >
-        Knockout tournament
+        AI schedule
       </button>
     </div>
   );

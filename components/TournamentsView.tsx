@@ -10,11 +10,10 @@ interface Props {
   tournaments: Tournament[];
   onRun: (id: number) => void;
   onView: (id: number) => void;
-  onSchedule: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
-export default function TournamentsView({ tournaments, onRun, onView, onSchedule, onDelete }: Props) {
+export default function TournamentsView({ tournaments, onRun, onView, onDelete }: Props) {
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -40,7 +39,6 @@ export default function TournamentsView({ tournaments, onRun, onView, onSchedule
             <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
               <Button className="bg-red-500 hover:bg-red-600" onClick={() => onRun(tournament.id)}>Run</Button>
               <Button className="bg-amber-500 hover:bg-amber-600" onClick={() => onView(tournament.id)}>View</Button>
-              <Button className="bg-blue-500 hover:bg-blue-600" onClick={() => onSchedule(tournament.id)}>AI Schedule</Button>
               <Button variant="destructive" onClick={() => onDelete(tournament.id)}>Delete</Button>
             </div>
           </div>
