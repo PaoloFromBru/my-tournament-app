@@ -89,18 +89,6 @@ export default function TournamentsPage() {
     form.reset();
   };
 
-  const createEmptyTournament = async () => {
-    if (!user) return;
-    const name = window.prompt("Tournament name") || "";
-    if (!name) return;
-    const insertedId = await createTournamentRecord(name);
-    if (insertedId) {
-      setTournaments((prev) => [
-        ...prev,
-        { id: insertedId, name, teams: [] },
-      ]);
-    }
-  };
 
   const deleteTournament = async (id: number) => {
     if (!user) return;
@@ -193,7 +181,6 @@ export default function TournamentsPage() {
       tournaments={tournaments}
       teams={teams}
       onSchedule={handleSchedule}
-      onCreate={createEmptyTournament}
       onRun={(id) => router.push(`/run/${id}`)}
       onView={(id) => router.push(`/tournaments/${id}`)}
       onDelete={deleteTournament}
