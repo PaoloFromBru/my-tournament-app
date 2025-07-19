@@ -24,7 +24,10 @@ export default function PlayersPage() {
           .from('players')
           .select('*')
           .eq('user_id', userData.user.id);
-        setPlayers(data || []);
+        const sorted = (data || []).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+        setPlayers(sorted);
       }
     };
     load();
@@ -55,7 +58,8 @@ export default function PlayersPage() {
       .from("players")
       .select("*")
       .eq("user_id", user.id);
-    setPlayers(data || []);
+    const sorted = (data || []).sort((a, b) => a.name.localeCompare(b.name));
+    setPlayers(sorted);
     form.reset();
   };
 
@@ -83,7 +87,8 @@ export default function PlayersPage() {
       .from("players")
       .select("*")
       .eq("user_id", user.id);
-    setPlayers(data || []);
+    const sorted = (data || []).sort((a, b) => a.name.localeCompare(b.name));
+    setPlayers(sorted);
   };
 
   const changeSkills = async (id: number) => {
@@ -109,7 +114,8 @@ export default function PlayersPage() {
       .from("players")
       .select("*")
       .eq("user_id", user.id);
-    setPlayers(data || []);
+    const sorted = (data || []).sort((a, b) => a.name.localeCompare(b.name));
+    setPlayers(sorted);
   };
 
 

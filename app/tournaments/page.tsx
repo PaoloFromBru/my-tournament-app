@@ -66,7 +66,6 @@ export default function TournamentsPage() {
       .from("tournaments")
       .insert({
         name,
-        
         user_id: user.id,
       })
       .select()
@@ -82,25 +81,7 @@ export default function TournamentsPage() {
         ...prev,
         { id: inserted.id, name: inserted.name, teams: selected.map((id) => ({ id })) },
       ]);
-    }
-
-    const teamsForSchedule = teams.filter((t) => selected.includes(t.id));
-    const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
-    if (teamsForSchedule.length > 1 && !isPower(teamsForSchedule.length)) {
-      try {
-        const res = await fetch("/api/best-schedule", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ teams: teamsForSchedule }),
-        });
-        const json = await res.json();
-        setDebug(json.debug || []);
-        if (!res.ok) {
-          alert(json.error || "AI schedule failed");
-        }
-      } catch (err: any) {
-        setDebug([err?.message || "schedule error"]);
-      }
+      await generateSchedule(inserted.id);
     }
 
     setName("");
@@ -128,7 +109,7 @@ export default function TournamentsPage() {
     setTournaments((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const generateSchedule = async (id: number) => {
+  async function generateSchedule(id: number) {
     setLoadingId(id);
     const { data: userData } = await supabase.auth.getUser();
     const currentUser = userData.user;
@@ -200,7 +181,7 @@ export default function TournamentsPage() {
 
     setLoadingId(null);
     setDebug(debugInfo);
-  };
+  }
 
   return (
     <div className="space-y-8">
@@ -234,7 +215,7 @@ export default function TournamentsPage() {
           onClick={createTournament}
           disabled={!name || selected.length === 0}
         >
-          Knockout tournament
+          AI schedule
         </button>
         {debug.length > 0 && (
           <pre className="border p-2 text-sm whitespace-pre-wrap">{debug.join("\n")}</pre>
@@ -244,7 +225,6 @@ export default function TournamentsPage() {
         tournaments={tournaments}
         onRun={(id) => router.push(`/run/${id}`)}
         onView={(id) => router.push(`/tournaments/${id}`)}
-        onSchedule={generateSchedule}
         onDelete={deleteTournament}
       />
     </div>
