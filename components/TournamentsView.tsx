@@ -15,7 +15,6 @@ interface Props {
   tournaments: Tournament[];
   teams: Team[];
   onSchedule: React.FormEventHandler<HTMLFormElement>;
-  onCreate: React.MouseEventHandler<HTMLButtonElement>;
   onRun: (id: number) => void;
   onView: (id: number) => void;
   onDelete: (id: number) => void;
@@ -25,7 +24,6 @@ export default function TournamentsView({
   tournaments,
   teams,
   onSchedule,
-  onCreate,
   onRun,
   onView,
   onDelete,
@@ -70,10 +68,7 @@ export default function TournamentsView({
 
       {/* Tournaments List */}
       <section className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Tournaments</h2>
-          <Button variant="outline" onClick={onCreate}>Create New Tournament</Button>
-        </div>
+        <h2 className="text-xl font-semibold">Tournaments</h2>
 
         {tournaments.map((tournament) => (
           <div
