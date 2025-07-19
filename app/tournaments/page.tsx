@@ -9,10 +9,14 @@ interface Team {
   name: string;
 }
 
+interface TournamentTeam {
+  id: number;
+}
+
 interface Tournament {
   id: number;
   name: string;
-  teams: Team[];
+  teams: TournamentTeam[];
 }
 
 export default function TournamentsPage() {
