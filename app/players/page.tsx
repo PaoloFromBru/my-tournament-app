@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import PlayersView from "../../components/PlayersView";
 import { supabase } from "../../lib/supabaseBrowser";
 
 type Player = {
@@ -13,13 +14,6 @@ type Player = {
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [name, setName] = useState("");
-  const [offense, setOffense] = useState(0);
-  const [defense, setDefense] = useState(0);
-  const [editing, setEditing] = useState<number | null>(null);
-  const [skillEditing, setSkillEditing] = useState<number | null>(null);
-  const [skillOffense, setSkillOffense] = useState(0);
-  const [skillDefense, setSkillDefense] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -36,74 +30,88 @@ export default function PlayersPage() {
     load();
   }, []);
 
-  const resetForm = () => {
-    setName("");
-    setOffense(0);
-    setDefense(0);
-    setEditing(null);
-  };
-
-  const addOrUpdate = async () => {
+  const addPlayer = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!user) return;
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value;
+    const offense = Number(
+      (form.elements.namedItem("offense") as HTMLInputElement).value,
+    );
+    const defense = Number(
+      (form.elements.namedItem("defense") as HTMLInputElement).value,
+    );
     if (offense < 0 || offense > 10 || defense < 0 || defense > 10) {
-      alert('Skills must be between 0 and 10');
+      alert("Skills must be between 0 and 10");
       return;
     }
-    if (editing !== null) {
-      await supabase
-        .from('players')
-        .update({ name, offense, defense })
-        .eq('id', editing)
-        .eq('user_id', user.id);
-    } else {
-      await supabase
-        .from('players')
-        .insert({ name, offense, defense, user_id: user.id });
-    }
+    await supabase.from("players").insert({
+      name,
+      offense,
+      defense,
+      user_id: user.id,
+    });
     const { data } = await supabase
-      .from('players')
-      .select('*')
-      .eq('user_id', user.id);
+      .from("players")
+      .select("*")
+      .eq("user_id", user.id);
     setPlayers(data || []);
-    resetForm();
+    form.reset();
   };
 
-  const edit = (p: Player) => {
-    setName(p.name);
-    setOffense(p.offense);
-    setDefense(p.defense);
-    setEditing(p.id);
-  };
-
-  const editSkills = (p: Player) => {
-    setSkillOffense(p.offense);
-    setSkillDefense(p.defense);
-    setSkillEditing(p.id);
-  };
-
-  const updateSkills = async (id: number) => {
+  const editPlayer = async (id: number) => {
     if (!user) return;
-    if (
-      skillOffense < 0 ||
-      skillOffense > 10 ||
-      skillDefense < 0 ||
-      skillDefense > 10
-    ) {
-      alert('Skills must be between 0 and 10');
+    const current = players.find((p) => p.id === id);
+    if (!current) return;
+    const name = window.prompt("Name", current.name) ?? current.name;
+    const offense = Number(
+      window.prompt("Offense (0-10)", String(current.offense)) ?? current.offense,
+    );
+    const defense = Number(
+      window.prompt("Defense (0-10)", String(current.defense)) ?? current.defense,
+    );
+    if (offense < 0 || offense > 10 || defense < 0 || defense > 10) {
+      alert("Skills must be between 0 and 10");
       return;
     }
     await supabase
-      .from('players')
-      .update({ offense: skillOffense, defense: skillDefense })
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .from("players")
+      .update({ name, offense, defense })
+      .eq("id", id)
+      .eq("user_id", user.id);
     const { data } = await supabase
-      .from('players')
-      .select('*')
-      .eq('user_id', user.id);
+      .from("players")
+      .select("*")
+      .eq("user_id", user.id);
     setPlayers(data || []);
-    setSkillEditing(null);
   };
+
+  const changeSkills = async (id: number) => {
+    if (!user) return;
+    const current = players.find((p) => p.id === id);
+    if (!current) return;
+    const offense = Number(
+      window.prompt("Offense (0-10)", String(current.offense)) ?? current.offense,
+    );
+    const defense = Number(
+      window.prompt("Defense (0-10)", String(current.defense)) ?? current.defense,
+    );
+    if (offense < 0 || offense > 10 || defense < 0 || defense > 10) {
+      alert("Skills must be between 0 and 10");
+      return;
+    }
+    await supabase
+      .from("players")
+      .update({ offense, defense })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    const { data } = await supabase
+      .from("players")
+      .select("*")
+      .eq("user_id", user.id);
+    setPlayers(data || []);
+  };
+
 
   const deletePlayer = async (id: number) => {
     if (!user) return;
@@ -158,99 +166,12 @@ export default function PlayersPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold">Players</h2>
-      <div className="space-y-2">
-        <input
-          className="border p-1"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <p className="text-sm text-gray-600">
-          Enter the player's Offence and Defence levels below (0-10).
-        </p>
-        <input
-          type="number"
-          className="border p-1"
-          placeholder="Offense"
-          value={offense}
-          onChange={(e) => setOffense(Number(e.target.value))}
-        />
-        <input
-          type="number"
-          className="border p-1"
-          placeholder="Defense"
-          value={defense}
-          onChange={(e) => setDefense(Number(e.target.value))}
-        />
-        <button
-          className="mt-2 border border-green-500 bg-green-500 hover:bg-green-600 text-white px-2"
-          onClick={addOrUpdate}
-        >
-          {editing ? "Update" : "Add"}
-        </button>
-        {editing && (
-          <button className="mt-2 border bg-gray-200 px-2" onClick={resetForm}>
-            Cancel
-          </button>
-        )}
-      </div>
-      <ul className="space-y-1 bg-gray-100 p-2 rounded">
-        {players.map((p) => (
-          <li key={p.id} className="border-b pb-2">
-            <div className="flex items-center gap-2">
-              <span className="flex-1">
-                {p.name}{" "}
-                <span className="text-sm text-gray-500">O:{p.offense} D:{p.defense}</span>
-              </span>
-              <button
-                className="border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5"
-                onClick={() => edit(p)}
-              >
-                Edit
-              </button>
-              <button
-                className="border border-yellow-500 bg-yellow-500 hover:bg-yellow-600 text-black px-2 py-0.5"
-                onClick={() => editSkills(p)}
-              >
-                Change skills
-              </button>
-              <button
-                className="border border-orange-500 bg-orange-500 hover:bg-orange-600 text-white px-2 py-0.5"
-                onClick={() => deletePlayer(p.id)}
-              >
-                Delete
-              </button>
-            </div>
-            {skillEditing === p.id && (
-              <div className="flex gap-2 mt-1 items-center">
-                <input
-                  type="number"
-                  className="border p-1 w-20"
-                  value={skillOffense}
-                  onChange={(e) => setSkillOffense(Number(e.target.value))}
-                />
-                <input
-                  type="number"
-                  className="border p-1 w-20"
-                  value={skillDefense}
-                  onChange={(e) => setSkillDefense(Number(e.target.value))}
-                />
-                <button
-                  className="border border-yellow-500 bg-yellow-500 hover:bg-yellow-600 text-black px-2"
-                  onClick={() => updateSkills(p.id)}
-                >
-                  Save
-                </button>
-                <button className="border bg-gray-200 px-2" onClick={() => setSkillEditing(null)}>
-                  Cancel
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <PlayersView
+      players={players}
+      onAdd={addPlayer}
+      onEdit={editPlayer}
+      onDelete={deletePlayer}
+      onChangeSkills={changeSkills}
+    />
   );
 }
