@@ -7,9 +7,10 @@ interface ButtonProps {
   className?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   variant?: BuiltInVariant | string;
+  type?: "button" | "submit" | "reset";
 }
 
-export function Button({ children, className = "", onClick, variant = "default" }: ButtonProps) {
+export function Button({ children, className = "", onClick, variant = "default", type = "button" }: ButtonProps) {
   const base =
     "inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition";
   const variants = {
@@ -24,7 +25,11 @@ export function Button({ children, className = "", onClick, variant = "default" 
       : variant;
 
   return (
-    <button className={`${base} ${variantClass} ${className}`.trim()} onClick={onClick}>
+    <button
+      type={type}
+      className={`${base} ${variantClass} ${className}`.trim()}
+      onClick={onClick}
+    >
       {children}
     </button>
   );
