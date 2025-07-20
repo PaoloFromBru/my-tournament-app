@@ -107,7 +107,13 @@ export default function TournamentsView({
               <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onView(tournament.id)}>
                 View
               </Button>
-              <Button className="bg-blue-500 hover:bg-blue-600" onClick={() => onShare(tournament.id)}>
+              <Button
+                className="bg-blue-500 hover:bg-blue-600"
+                onClick={() => {
+                  console.debug('Share button clicked for', tournament.id);
+                  onShare(tournament.id);
+                }}
+              >
                 Share
               </Button>
               <Button variant="destructive" onClick={() => onDelete(tournament.id)}>

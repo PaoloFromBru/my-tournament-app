@@ -89,13 +89,14 @@ export default function PublicTournamentView() {
       </ul>
 
       <button
-        onClick={() =>
+        onClick={() => {
+          console.debug('Public share invoked', shareUrl);
           navigator.share?.({
             title: tournament.name,
             url: shareUrl,
             text: 'Follow the tournament live!'
-          })
-        }
+          });
+        }}
         className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg"
       >
         Share with Participants

@@ -77,7 +77,11 @@ export default function TournamentViewPage() {
           {tournament?.name || "Tournament"}
         </h2>
         <button
-          onClick={() => router.push(`/tournaments/${id}/public`)}
+          onClick={() => {
+            setDebug((d) => [...d, `Share button clicked for ${id}`]);
+            console.debug('Share button clicked for', id);
+            router.push(`/tournaments/${id}/public`);
+          }}
           className="px-3 py-1.5 text-sm rounded bg-blue-500 text-white hover:bg-blue-600"
         >
           Share
