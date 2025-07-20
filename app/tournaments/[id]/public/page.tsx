@@ -27,8 +27,10 @@ export default function PublicTournamentView() {
   const [shareUrl, setShareUrl] = useState('');
 
   useEffect(() => {
-    setShareUrl(window.location.href);
-  }, []);
+    // Always share the canonical public URL for the tournament
+    const url = `${window.location.origin}/tournaments/${id}/public`;
+    setShareUrl(url);
+  }, [id]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -50,11 +52,13 @@ export default function PublicTournamentView() {
         }))
       );
 
+      // Order by id so that matches appear in consistent order without
+      // relying on a non-existent created_at column
       const { data: matchData } = await supabase
         .from('matches')
         .select('*')
         .eq('tournament_id', id)
-        .order('created_at', { ascending: true });
+        .order('id', { ascending: true });
       setMatches(matchData || []);
     };
 
