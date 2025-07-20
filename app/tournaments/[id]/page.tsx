@@ -39,10 +39,15 @@ export default function TournamentViewPage() {
       setTournament(t);
 
       const { data: teamData } = await supabase
-        .from("teams")
-        .select("id, name")
+        .from("tournament_teams")
+        .select("team_id, teams(id, name)")
         .eq("tournament_id", id);
-      setTeams(teamData || []);
+      setTeams(
+        (teamData || []).map((tt: any) => ({
+          id: tt.team_id,
+          name: tt.teams?.name ?? "",
+        }))
+      );
 
       const { data: matchData } = await supabase
         .from("matches")

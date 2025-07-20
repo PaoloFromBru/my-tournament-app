@@ -39,12 +39,13 @@ export default function TournamentsPage() {
 
         const { data: tourData } = await supabase
           .from("tournaments")
-          .select("id, name, teams(id)")
+          .select("id, name, tournament_teams(team_id)")
           .eq("user_id", userData.user.id);
         const converted = (tourData || []).map((t) => ({
           id: t.id,
           name: t.name,
-          teams: t.teams || [],
+          teams:
+            t.tournament_teams?.map((tt: any) => ({ id: tt.team_id })) || [],
         }));
         setTournaments(converted);
       }
@@ -76,11 +77,9 @@ export default function TournamentsPage() {
     try {
       const insertedId = await createTournamentRecord(name);
       if (insertedId) {
-        await supabase
-          .from("teams")
-          .update({ tournament_id: insertedId })
-          .in("id", ids)
-          .eq("user_id", user.id);
+        await supabase.from("tournament_teams").insert(
+          ids.map((teamId) => ({ tournament_id: insertedId, team_id: teamId }))
+        );
 
         setTournaments((prev) => [
           ...prev,
@@ -104,10 +103,9 @@ export default function TournamentsPage() {
       .eq("tournament_id", id)
       .eq("user_id", user.id);
     await supabase
-      .from("teams")
-      .update({ tournament_id: null })
-      .eq("tournament_id", id)
-      .eq("user_id", user.id);
+      .from("tournament_teams")
+      .delete()
+      .eq("tournament_id", id);
     await supabase
       .from("tournaments")
       .delete()
@@ -124,12 +122,15 @@ export default function TournamentsPage() {
     }
 
     const { data: teamData } = await supabase
-      .from("teams")
-      .select("id, name")
-      .eq("user_id", currentUser.id)
-      .eq("tournament_id", id);
+      .from("tournament_teams")
+      .select("team_id, teams(id, name, user_id)")
+      .eq("tournament_id", id)
+      .eq("teams.user_id", currentUser.id);
 
-    const tms = teamData || [];
+    const tms = (teamData || []).map((tt: any) => ({
+      id: tt.team_id,
+      name: tt.teams?.name ?? "",
+    }));
     if (tms.length < 2) {
       return;
     }
