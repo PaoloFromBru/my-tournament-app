@@ -1,4 +1,7 @@
+"use client";
+import { useState, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import SelectableTagGroup from "./SelectableTagGroup";
 
 interface Team {
   id: string;
@@ -14,7 +17,7 @@ interface Tournament {
 interface Props {
   tournaments: Tournament[];
   teams: Team[];
-  onSchedule: React.FormEventHandler<HTMLFormElement>;
+  onSchedule: (name: string, teamIds: string[]) => void | Promise<void>;
   onRun: (id: string) => void;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
@@ -30,6 +33,22 @@ export default function TournamentsView({
   onDelete,
   loading,
 }: Props) {
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+
+  const toggleTeam = (id: string) => {
+    setSelectedTeams((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+    );
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("tournamentName") as HTMLInputElement).value;
+    onSchedule(name, selectedTeams);
+    setSelectedTeams([]);
+    form.reset();
+  };
   return (
     <div className="relative max-w-3xl mx-auto p-6 space-y-8">
       {loading && (
@@ -41,7 +60,7 @@ export default function TournamentsView({
       <section className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 space-y-4">
         <h2 className="text-xl font-semibold">Tournament Setup</h2>
 
-        <form onSubmit={onSchedule} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             name="tournamentName"
@@ -50,22 +69,14 @@ export default function TournamentsView({
             className="w-full px-4 py-2 border border-gray-300 rounded-md text-sm"
           />
 
-          <div>
-            <label className="block font-medium mb-1 text-sm">Select Teams</label>
-            <div className="flex flex-wrap gap-3 max-h-32 overflow-y-auto">
-              {teams.map((team) => (
-                <label key={team.id} className="flex items-center gap-1 text-sm">
-                  <input
-                    type="checkbox"
-                    name="teamSelection"
-                    value={team.id}
-                    className="text-emerald-600 rounded"
-                  />
-                  {team.name}
-                </label>
-              ))}
-            </div>
-          </div>
+          <SelectableTagGroup
+            label="Select Teams"
+            items={teams}
+            selectedIds={selectedTeams}
+            onToggle={toggleTeam}
+            getLabel={(t) => t.name}
+            maxHeight="max-h-32"
+          />
 
           <Button type="submit" className="mt-2 bg-emerald-600 hover:bg-emerald-700">
             AI Schedule
