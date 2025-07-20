@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
 
 interface Match {
@@ -22,6 +22,7 @@ interface Team {
 export default function TournamentViewPage() {
   const params = useParams();
   const id = params?.id as string;
+  const router = useRouter();
 
   const [tournament, setTournament] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -75,6 +76,16 @@ export default function TournamentViewPage() {
         <h2 className="flex-1 text-xl font-bold">
           {tournament?.name || "Tournament"}
         </h2>
+        <button
+          onClick={() => {
+            setDebug((d) => [...d, `Share button clicked for ${id}`]);
+            console.debug('Share button clicked for', id);
+            router.push(`/tournaments/${id}/public`);
+          }}
+          className="px-3 py-1.5 text-sm rounded bg-blue-500 text-white hover:bg-blue-600"
+        >
+          Share
+        </button>
       </div>
       {debug.length > 0 && (
         <details className="text-sm border p-2 rounded">

@@ -192,6 +192,7 @@ export default function TournamentsPage() {
       onSchedule={handleSchedule}
       onRun={(id) => router.push(`/run/${id}`)}
       onView={(id) => router.push(`/tournaments/${id}`)}
+      onShare={(id) => router.push(`/tournaments/${id}/public`)}
       onDelete={deleteTournament}
       loading={loading}
     />

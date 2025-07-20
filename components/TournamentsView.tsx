@@ -20,6 +20,7 @@ interface Props {
   onSchedule: (name: string, teamIds: string[]) => void | Promise<void>;
   onRun: (id: string) => void;
   onView: (id: string) => void;
+  onShare: (id: string) => void;
   onDelete: (id: string) => void;
   loading?: boolean;
 }
@@ -30,6 +31,7 @@ export default function TournamentsView({
   onSchedule,
   onRun,
   onView,
+  onShare,
   onDelete,
   loading,
 }: Props) {
@@ -104,6 +106,15 @@ export default function TournamentsView({
               </Button>
               <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onView(tournament.id)}>
                 View
+              </Button>
+              <Button
+                className="bg-blue-500 hover:bg-blue-600"
+                onClick={() => {
+                  console.debug('Share button clicked for', tournament.id);
+                  onShare(tournament.id);
+                }}
+              >
+                Share
               </Button>
               <Button variant="destructive" onClick={() => onDelete(tournament.id)}>
                 Delete

@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabaseBrowser";
 
 export default function LoginOverlay({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPublic = pathname.includes("/public");
   const [user, setUser] = useState<any>(undefined);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,6 +17,7 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (isPublic) return;
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -24,7 +28,7 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [isPublic]);
 
   const loginUser = async () => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -91,7 +95,7 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
     setPassword("");
   }, [phase]);
 
-  if (!user) {
+  if (!user && !isPublic) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
         <div className="space-y-4 max-w-sm p-4 border bg-white">
