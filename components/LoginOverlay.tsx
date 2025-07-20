@@ -16,6 +16,10 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
     );
   const [message, setMessage] = useState("");
 
+  if (pathname.includes("/public")) {
+    return <>{children}</>;
+  }
+
   useEffect(() => {
     if (isPublic) return;
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
