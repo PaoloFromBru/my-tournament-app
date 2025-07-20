@@ -20,59 +20,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ strategy: "knockout", matches, debug });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    debug.push("OPENAI_API_KEY not found");
-    return NextResponse.json({ error: "Missing API key", debug }, { status: 500 });
+  // Determine how many byes are needed to reach the next power of two
+  const nextPower = 2 ** Math.ceil(Math.log2(teams.length));
+  const byes = nextPower - teams.length;
+
+  const matches: { round: number; teamA: number; teamB: number | null }[] = [];
+
+  // Assign byes to the first teams in the list
+  for (let i = 0; i < byes; i++) {
+    const team = teams[i];
+    matches.push({ round: 1, teamA: team.id, teamB: null });
   }
 
-  const prompt =
-    'You are an expert tournament organiser. Given a list of teams with their ids and names, create a knockout style schedule that includes **every** team. ' +
-    'If the number of teams is not a power of two, use play‑in games or byes so that all teams get a chance to compete. ' +
-    'For any match involving a bye, use `null` for the missing team\'s id and assume the opponent automatically advances. ' +
-    'Respond only with JSON in the format {"strategy":"string","matches":[{"round":1,"teamA":id,"teamB":id}]}.';
-
-  debug.push("Key retrieved, contacting OpenAI...");
-  try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: JSON.stringify(teams) },
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    debug.push("OpenAI response received");
-    if (!aiRes.ok) {
-      debug.push(`OpenAI request failed: ${aiRes.status}`);
-      const err = await aiRes.text();
-      debug.push(err);
-      return NextResponse.json({ error: err, debug }, { status: 500 });
-    }
-
-    const data = await aiRes.json();
-    const text = data.choices?.[0]?.message?.content || "{}";
-    let json;
-    try {
-      debug.push("Parsing response...");
-      json = JSON.parse(text);
-    } catch {
-      debug.push("Failed to parse response");
-      json = {};
-    }
-    debug.push("Returning schedule");
-    return NextResponse.json({ ...json, debug });
-  } catch (err: any) {
-    console.error(err);
-    debug.push(`Error: ${err?.message || 'unknown'}`);
-    return NextResponse.json({ error: err?.message || 'failed', debug }, { status: 500 });
+  // Pair the remaining teams
+  for (let i = byes; i < teams.length; i += 2) {
+    const a = teams[i];
+    const b = teams[i + 1];
+    matches.push({ round: 1, teamA: a.id, teamB: b ? b.id : null });
   }
+
+  debug.push("Generated schedule locally");
+  return NextResponse.json({ strategy: "knockout", matches, debug });
 }
