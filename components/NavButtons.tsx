@@ -8,6 +8,7 @@ export default function NavButtons() {
     { href: "/players", label: "Players" },
     { href: "/teams", label: "Teams" },
     { href: "/tournaments", label: "Tournaments" },
+    { href: "/settings", label: "Settings" },
   ];
 
   return (
