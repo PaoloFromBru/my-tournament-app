@@ -57,18 +57,23 @@ export default function TournamentRunPage() {
           .eq("user_id", currentUser.id);
 
         const { data: teamData } = await supabase
-          .from("teams")
-          .select("id, name")
-          .eq("user_id", currentUser.id)
-          .eq("tournament_id", id);
+          .from("tournament_teams")
+          .select("team_id, teams(id, name, user_id)")
+          .eq("tournament_id", id)
+          .eq("teams.user_id", currentUser.id);
+
+        const teamsConverted = (teamData || []).map((tt: any) => ({
+          id: tt.team_id,
+          name: tt.teams?.name ?? "",
+        }));
 
         if (!matchData || matchData.length === 0) {
           const pairs: { team_a: number; team_b: number }[] = [];
-          for (let i = 0; i < (teamData || []).length; i += 2) {
-            if (teamData && teamData[i + 1]) {
+          for (let i = 0; i < teamsConverted.length; i += 2) {
+            if (teamsConverted[i + 1]) {
               pairs.push({
-                team_a: teamData[i].id,
-                team_b: teamData[i + 1].id,
+                team_a: teamsConverted[i].id,
+                team_b: teamsConverted[i + 1].id,
               });
             }
           }
@@ -94,7 +99,7 @@ export default function TournamentRunPage() {
         }
 
         setMatches(matchData || []);
-        setTeams(teamData || []);
+        setTeams(teamsConverted);
 
         const initial: Record<number, { a: number; b: number }> = {};
         (matchData || []).forEach((m) => {

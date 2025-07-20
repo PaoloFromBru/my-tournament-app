@@ -50,11 +50,9 @@ export default function TournamentSetupPage() {
       .single();
 
     if (inserted?.id) {
-      await supabase
-        .from("teams")
-        .update({ tournament_id: inserted.id })
-        .in("id", selected)
-        .eq("user_id", user.id);
+      await supabase.from("tournament_teams").insert(
+        selected.map((teamId) => ({ tournament_id: inserted.id, team_id: teamId }))
+      );
     }
 
     setName("");
