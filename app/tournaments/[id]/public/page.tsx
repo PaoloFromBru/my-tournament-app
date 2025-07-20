@@ -27,8 +27,10 @@ export default function PublicTournamentView() {
   const [shareUrl, setShareUrl] = useState('');
 
   useEffect(() => {
-    setShareUrl(window.location.href);
-  }, []);
+    // Always share the canonical public URL for the tournament
+    const url = `${window.location.origin}/tournaments/${id}/public`;
+    setShareUrl(url);
+  }, [id]);
 
   useEffect(() => {
     const loadData = async () => {
