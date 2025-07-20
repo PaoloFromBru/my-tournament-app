@@ -14,9 +14,10 @@ interface Match {
   id: number;
   team_a: number | null;
   team_b: number | null;
-  result: string | null;
-  team1_name?: string;
-  team2_name?: string;
+  score_a: number | null;
+  score_b: number | null;
+  winner: number | null;
+  phase: string;
 }
 
 export default function PublicTournamentView() {
@@ -60,9 +61,40 @@ export default function PublicTournamentView() {
         .eq('tournament_id', id)
         .order('id', { ascending: true });
       setMatches(matchData || []);
-    };
+   };
 
     if (id) loadData();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`public-view-matches-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'matches',
+          filter: `tournament_id=eq.${id}`,
+        },
+        (payload) => {
+          const newMatch = payload.new as Match;
+          setMatches((prev) => {
+            const idx = prev.findIndex((m) => m.id === newMatch.id);
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = newMatch;
+              return updated;
+            }
+            return [...prev, newMatch].sort((a, b) => a.id - b.id);
+          });
+        }
+      );
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   if (!tournament) return <div className="p-4">Loading...</div>;
@@ -87,7 +119,11 @@ export default function PublicTournamentView() {
         {matches.map((match, index) => (
           <li key={match.id} className="border-b py-2">
             Match {index + 1}: {teamName(match.team_a)} vs {teamName(match.team_b)} —{' '}
-            <strong>{match.result || 'TBD'}</strong>
+            <strong>
+              {match.score_a !== null && match.score_b !== null
+                ? `${match.score_a} - ${match.score_b}`
+                : 'TBD'}
+            </strong>
           </li>
         ))}
       </ul>
