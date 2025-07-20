@@ -51,3 +51,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Importing Players from CSV
+
+On the Settings page you can bulk add players by uploading a CSV file. Each line
+of the file should contain three values: `name`, `offense`, and `defense`.
+Example:
+
+```
+name,offense,defense
+Alice,7,6
+Bob,5,8
+```
+
+The first row can optionally be a header and will be ignored. Rows must include
+all three values. Both `,` and `;` separators are accepted. After choosing your
+file and clicking **Import Players**, a message will indicate whether the
+operation succeeded or failed.
