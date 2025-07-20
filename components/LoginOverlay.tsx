@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabaseBrowser";
 
 export default function LoginOverlay({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(undefined);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,6 +14,10 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
       "login"
     );
   const [message, setMessage] = useState("");
+
+  if (pathname.includes("/public")) {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
