@@ -65,5 +65,6 @@ Bob,5,8
 ```
 
 The first row can optionally be a header and will be ignored. Rows must include
-all three values. After selecting your file, click **Import Players** to create
-the records in Supabase.
+all three values. Both `,` and `;` separators are accepted. After choosing your
+file and clicking **Import Players**, a message will indicate whether the
+operation succeeded or failed.
