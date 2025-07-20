@@ -10,6 +10,7 @@ const tabs = [
   { name: "Players", href: "/players" },
   { name: "Teams", href: "/teams" },
   { name: "Tournaments", href: "/tournaments" },
+  { name: "Settings", href: "/settings" },
 ];
 
 export default function Header() {
