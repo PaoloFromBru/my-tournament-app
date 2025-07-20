@@ -238,25 +238,18 @@ export default function TournamentRunPage() {
     }));
 
     if (!user) return;
-    const winner =
-      updated.a === updated.b
-        ? null
-        : updated.a > updated.b
-        ? m.team_a
-        : m.team_b;
     await supabase
       .from("matches")
       .update({
         score_a: updated.a,
         score_b: updated.b,
-        winner,
       })
       .eq("id", m.id)
       .eq("user_id", user.id);
     setMatches((prev) =>
       prev.map((mt) =>
         mt.id === m.id
-          ? { ...mt, score_a: updated.a, score_b: updated.b, winner }
+          ? { ...mt, score_a: updated.a, score_b: updated.b }
           : mt
       )
     );
