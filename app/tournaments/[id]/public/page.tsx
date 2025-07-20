@@ -14,9 +14,10 @@ interface Match {
   id: number;
   team_a: number | null;
   team_b: number | null;
-  result: string | null;
-  team1_name?: string;
-  team2_name?: string;
+  score_a: number | null;
+  score_b: number | null;
+  winner: number | null;
+  phase: string;
 }
 
 export default function PublicTournamentView() {
@@ -25,6 +26,7 @@ export default function PublicTournamentView() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [shareUrl, setShareUrl] = useState('');
+  const [winnerId, setWinnerId] = useState<number | null>(null);
 
   useEffect(() => {
     // Always share the canonical public URL for the tournament
@@ -60,10 +62,58 @@ export default function PublicTournamentView() {
         .eq('tournament_id', id)
         .order('id', { ascending: true });
       setMatches(matchData || []);
-    };
+   };
 
     if (id) loadData();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`public-view-matches-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'matches',
+          filter: `tournament_id=eq.${id}`,
+        },
+        (payload) => {
+          const newMatch = payload.new as Match;
+          setMatches((prev) => {
+            const idx = prev.findIndex((m) => m.id === newMatch.id);
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = newMatch;
+              return updated;
+            }
+            return [...prev, newMatch].sort((a, b) => a.id - b.id);
+          });
+        }
+      );
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (matches.length === 0) {
+      setWinnerId(null);
+      return;
+    }
+    const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, '')) || 0);
+    const maxRound = Math.max(...phaseNums, 0);
+    const finals = matches.filter(
+      (m) => (parseInt(m.phase.replace(/\D/g, '')) || 0) === maxRound
+    );
+    if (finals.length === 1 && finals[0].winner) {
+      setWinnerId(finals[0].winner);
+    } else {
+      setWinnerId(null);
+    }
+  }, [matches]);
 
   if (!tournament) return <div className="p-4">Loading...</div>;
 
@@ -73,7 +123,12 @@ export default function PublicTournamentView() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-2">{tournament.name}</h1>
-      <p className="mb-4 text-gray-600">Tournament in progress</p>
+      <p className="mb-2 text-gray-600">
+        {winnerId ? 'Tournament ended' : 'Tournament in progress'}
+      </p>
+      {winnerId && (
+        <p className="mb-4 font-semibold">Winner: {teamName(winnerId)}</p>
+      )}
 
       <h2 className="text-xl font-semibold mt-6">Teams</h2>
       <ul className="list-disc list-inside">
@@ -87,7 +142,11 @@ export default function PublicTournamentView() {
         {matches.map((match, index) => (
           <li key={match.id} className="border-b py-2">
             Match {index + 1}: {teamName(match.team_a)} vs {teamName(match.team_b)} —{' '}
-            <strong>{match.result || 'TBD'}</strong>
+            <strong>
+              {match.score_a !== null && match.score_b !== null
+                ? `${match.score_a} - ${match.score_b}`
+                : 'TBD'}
+            </strong>
           </li>
         ))}
       </ul>
