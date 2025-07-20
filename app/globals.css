@@ -25,8 +25,8 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* simple fireworks animation used when a tournament winner is decided */
-.fireworks-container {
+/* confetti animation used when a tournament winner is decided */
+.confetti-container {
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -34,19 +34,19 @@ body {
   z-index: 50;
 }
 
-.firework {
+.confetti {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  top: -10px;
+  width: 8px;
+  height: 12px;
+  opacity: 0.8;
   background: currentColor;
-  /* extend the animation so the fireworks are visible for longer */
-  animation: firework 3s ease-out forwards;
+  animation: confetti-fall 5s linear forwards;
 }
 
-@keyframes firework {
+@keyframes confetti-fall {
   to {
-    transform: translate3d(var(--x), var(--y), 0) scale(0);
+    transform: translateY(100vh) rotate(360deg);
     opacity: 0;
   }
 }

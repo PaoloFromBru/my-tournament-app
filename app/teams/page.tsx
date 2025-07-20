@@ -21,6 +21,7 @@ export default function TeamsPage() {
   const [user, setUser] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<TeamRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -185,12 +186,16 @@ export default function TeamsPage() {
 
   const generateBalancedTeams = async () => {
     if (!user) return;
+    setLoading(true);
     const res = await fetch("/api/balanced-teams", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ players }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      setLoading(false);
+      return;
+    }
     const { teams: newTeams } = await res.json();
     for (const t of newTeams || []) {
       const { data: inserted } = await supabase
@@ -225,6 +230,7 @@ export default function TeamsPage() {
         .map((tp) => tp.player_id),
     }));
     setTeams(combined);
+    setLoading(false);
   };
 
   return (
@@ -235,6 +241,7 @@ export default function TeamsPage() {
       onEdit={editTeam}
       onDelete={deleteTeam}
       onGenerateBalanced={generateBalancedTeams}
+      loading={loading}
     />
   );
 }
