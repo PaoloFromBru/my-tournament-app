@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import TournamentsView from "../../components/TournamentsView";
 import { supabase } from "../../lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
@@ -62,15 +62,8 @@ export default function TournamentsPage() {
     return inserted?.id;
   };
 
-  const handleSchedule = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSchedule = async (name: string, ids: string[]) => {
     if (!user) return;
-    const form = e.currentTarget;
-    const name = (form.elements.namedItem("tournamentName") as HTMLInputElement).value;
-    const teamInputs = Array.from(
-      form.querySelectorAll<HTMLInputElement>("input[name='teamSelection']:checked")
-    );
-    const ids = teamInputs.map((inp) => inp.value);
     if (!name || ids.length === 0) return;
 
     setLoading(true);
@@ -89,7 +82,6 @@ export default function TournamentsPage() {
       }
     } finally {
       setLoading(false);
-      form.reset();
     }
   };
 

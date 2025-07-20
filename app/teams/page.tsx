@@ -58,17 +58,8 @@ export default function TeamsPage() {
   }, []);
 
 
-  const addTeam = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const addTeam = async (name: string, memberIds: number[]) => {
     if (!user) return;
-
-    const form = e.currentTarget;
-    const name = (form.elements.namedItem("teamName") as HTMLInputElement).value;
-    const memberInputs = Array.from(
-      form.querySelectorAll<HTMLInputElement>("input[name='members']:checked"),
-    );
-    const memberIds = memberInputs.map((inp) => Number(inp.value));
-
     if (!name || memberIds.length !== 2) return;
 
     const { data: inserted } = await supabase
@@ -104,7 +95,6 @@ export default function TeamsPage() {
     }));
 
     setTeams(combined);
-    form.reset();
   };
 
   const editTeam = async (team: TeamRow) => {

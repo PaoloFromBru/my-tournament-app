@@ -1,4 +1,7 @@
+"use client";
+import { useState, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import SelectableTagGroup from "./SelectableTagGroup";
 
 export interface Player {
   id: number;
@@ -16,7 +19,7 @@ export interface Team {
 interface Props {
   teams: Team[];
   players: Player[];
-  onAdd: React.FormEventHandler<HTMLFormElement>;
+  onAdd: (name: string, memberIds: number[]) => void | Promise<void>;
   onEdit: (team: Team) => void;
   onDelete: (id: number) => void;
   onGenerateBalanced: () => void;
@@ -40,6 +43,23 @@ export default function TeamsView({
   onDelete,
   onGenerateBalanced,
 }: Props) {
+  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+
+  const togglePlayer = (id: number) => {
+    setSelectedPlayers((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("teamName") as HTMLInputElement).value;
+    onAdd(name, selectedPlayers);
+    setSelectedPlayers([]);
+    form.reset();
+  };
+
   const playerName = (id: number) => players.find((p) => p.id === id)?.name || "";
 
   return (
@@ -54,7 +74,7 @@ export default function TeamsView({
 
       {/* Add New Team */}
       <form
-        onSubmit={onAdd}
+        onSubmit={handleSubmit}
         className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 space-y-4"
       >
         <div className="grid sm:grid-cols-2 gap-4">
@@ -65,20 +85,14 @@ export default function TeamsView({
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
           />
 
-          {/* Player checkboxes */}
-          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-            {players.map((player) => (
-              <label key={player.id} className="text-sm flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  name="members"
-                  value={player.id}
-                  className="rounded text-emerald-600"
-                />
-                {player.name}
-              </label>
-            ))}
-          </div>
+          <SelectableTagGroup
+            items={players}
+            selectedIds={selectedPlayers}
+            onToggle={togglePlayer}
+            label="Select Players"
+            getLabel={(p) => p.name}
+            maxHeight="max-h-32"
+          />
         </div>
 
         <Button type="submit" className="mt-2">
