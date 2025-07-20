@@ -222,6 +222,46 @@ export default function TournamentRunPage() {
     );
   };
 
+  const updateScore = async (
+    m: Match,
+    field: "a" | "b",
+    value: number
+  ) => {
+    const current = scores[m.id] || { a: m.score_a || 0, b: m.score_b || 0 };
+    const updated = {
+      ...current,
+      [field]: value,
+    } as { a: number; b: number };
+    setScores((prev) => ({
+      ...prev,
+      [m.id]: updated,
+    }));
+
+    if (!user) return;
+    const winner =
+      updated.a === updated.b
+        ? null
+        : updated.a > updated.b
+        ? m.team_a
+        : m.team_b;
+    await supabase
+      .from("matches")
+      .update({
+        score_a: updated.a,
+        score_b: updated.b,
+        winner,
+      })
+      .eq("id", m.id)
+      .eq("user_id", user.id);
+    setMatches((prev) =>
+      prev.map((mt) =>
+        mt.id === m.id
+          ? { ...mt, score_a: updated.a, score_b: updated.b, winner }
+          : mt
+      )
+    );
+  };
+
   const phases = Array.from(new Set(matches.map((m) => m.phase))).sort(
     (a, b) =>
       (parseInt(a.replace(/\D/g, "")) || 0) -
@@ -274,13 +314,11 @@ export default function TournamentRunPage() {
                         className="w-12 border"
                         value={scores[m.id]?.a ?? 0}
                         onChange={(e) =>
-                          setScores({
-                            ...scores,
-                            [m.id]: {
-                              a: Number(e.target.value),
-                              b: scores[m.id]?.b ?? 0,
-                            },
-                          })
+                          updateScore(
+                            m,
+                            "a",
+                            Number(e.target.value)
+                          )
                         }
                       />
                     </div>
@@ -291,13 +329,11 @@ export default function TournamentRunPage() {
                         className="w-12 border"
                         value={scores[m.id]?.b ?? 0}
                         onChange={(e) =>
-                          setScores({
-                            ...scores,
-                            [m.id]: {
-                              a: scores[m.id]?.a ?? 0,
-                              b: Number(e.target.value),
-                            },
-                          })
+                          updateScore(
+                            m,
+                            "b",
+                            Number(e.target.value)
+                          )
                         }
                       />
                     </div>
