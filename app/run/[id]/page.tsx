@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
 
@@ -116,22 +117,19 @@ export default function TournamentRunPage() {
       ? "BYE"
       : teams.find((t) => t.id === tid)?.name || "Unknown team";
 
-  const triggerFireworks = () => {
+  const triggerConfetti = () => {
     const container = document.createElement("div");
-    container.className = "fireworks-container";
-    for (let i = 0; i < 20; i++) {
+    container.className = "confetti-container";
+    for (let i = 0; i < 100; i++) {
       const el = document.createElement("div");
-      el.className = "firework";
-      el.style.left = `${50}%`;
-      el.style.top = `${50}%`;
-      el.style.setProperty("--x", `${(Math.random() - 0.5) * 400}px`);
-      el.style.setProperty("--y", `${(Math.random() - 0.5) * 400}px`);
-      el.style.color = `hsl(${Math.random() * 360},100%,50%)`;
+      el.className = "confetti";
+      el.style.left = `${Math.random() * 100}%`;
+      el.style.backgroundColor = `hsl(${Math.random() * 360},100%,50%)`;
+      el.style.animationDelay = `${Math.random() * 0.5}s`;
       container.appendChild(el);
     }
     document.body.appendChild(container);
-    // keep the fireworks visible for a little longer so users can enjoy them
-    setTimeout(() => container.remove(), 3000);
+    setTimeout(() => container.remove(), 5000);
   };
 
   const nextRound = async () => {
@@ -145,7 +143,7 @@ export default function TournamentRunPage() {
     if (winners.length !== currentMatches.length) return;
 
     if (winners.length === 1) {
-      triggerFireworks();
+      triggerConfetti();
       return;
     }
 
@@ -249,7 +247,7 @@ export default function TournamentRunPage() {
       (m) => parseInt(m.phase.replace(/\D/g, "")) === maxRound
     );
     if (finalMatches.length === 1 && finalMatches[0].winner) {
-      triggerFireworks();
+      triggerConfetti();
       setCelebrated(true);
     }
   }, [matches, celebrated]);
@@ -321,9 +319,9 @@ export default function TournamentRunPage() {
         ))}
       </div>
       {canAdvance && (
-        <button className="border bg-gray-200 px-2" onClick={nextRound}>
+        <Button className="bg-blue-500 hover:bg-blue-600" onClick={nextRound}>
           Next Round
-        </button>
+        </Button>
       )}
     </div>
   );

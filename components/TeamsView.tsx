@@ -23,6 +23,7 @@ interface Props {
   onEdit: (team: Team) => void;
   onDelete: (id: number) => void;
   onGenerateBalanced: () => void;
+  loading?: boolean;
 }
 
 function teamOffense(ids: number[], players: Player[]) {
@@ -42,6 +43,7 @@ export default function TeamsView({
   onEdit,
   onDelete,
   onGenerateBalanced,
+  loading,
 }: Props) {
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
 
@@ -63,12 +65,17 @@ export default function TeamsView({
   const playerName = (id: number) => players.find((p) => p.id === id)?.name || "";
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="relative max-w-3xl mx-auto p-6 space-y-6">
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <img src="/babyfoot.svg" alt="loading" className="w-20 h-20 animate-spin" />
+        </div>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Teams</h2>
         <Button variant="outline" onClick={onGenerateBalanced}>
-          Balanced Teams
+          AI balanced teams
         </Button>
       </div>
 
