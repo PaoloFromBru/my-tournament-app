@@ -64,54 +64,53 @@ export default function TournamentRunPage() {
       if (currentUser) teamQuery.eq("teams.user_id", currentUser.id);
       const { data: teamData } = await teamQuery;
 
-        const teamsConverted = (teamData || []).map((tt: any) => ({
-          id: tt.team_id,
-          name: tt.teams?.name ?? "",
-        }));
+      const teamsConverted = (teamData || []).map((tt: any) => ({
+        id: tt.team_id,
+        name: tt.teams?.name ?? "",
+      }));
 
-        if (!matchData || matchData.length === 0) {
-          const pairs: { team_a: number; team_b: number }[] = [];
-          for (let i = 0; i < teamsConverted.length; i += 2) {
-            if (teamsConverted[i + 1]) {
-              pairs.push({
-                team_a: teamsConverted[i].id,
-                team_b: teamsConverted[i + 1].id,
-              });
-            }
-          }
-          if (pairs.length) {
-            await supabase.from("matches").insert(
-              pairs.map((p) => ({
-                ...p,
-                phase: "round1",
-                scheduled_at: null,
-                tournament_id: id,
-                user_id: currentUser?.id ?? null,
-              }))
-            );
-            let newMatchQuery = supabase
-              .from("matches")
-              .select("*")
-              .eq("tournament_id", id);
-            newMatchQuery = currentUser
-              ? newMatchQuery.eq("user_id", currentUser.id)
-              : newMatchQuery.is("user_id", null);
-            const { data: newMatches } = await newMatchQuery;
-            matchData = newMatches || [];
-          } else {
-            matchData = [];
+      if (!matchData || matchData.length === 0) {
+        const pairs: { team_a: number; team_b: number }[] = [];
+        for (let i = 0; i < teamsConverted.length; i += 2) {
+          if (teamsConverted[i + 1]) {
+            pairs.push({
+              team_a: teamsConverted[i].id,
+              team_b: teamsConverted[i + 1].id,
+            });
           }
         }
-
-        setMatches(matchData || []);
-        setTeams(teamsConverted);
-
-        const initial: Record<number, { a: number; b: number }> = {};
-        (matchData || []).forEach((m) => {
-          initial[m.id] = { a: m.score_a || 0, b: m.score_b || 0 };
-        });
-        setScores(initial);
+        if (pairs.length) {
+          await supabase.from("matches").insert(
+            pairs.map((p) => ({
+              ...p,
+              phase: "round1",
+              scheduled_at: null,
+              tournament_id: id,
+              user_id: currentUser?.id ?? null,
+            }))
+          );
+          let newMatchQuery = supabase
+            .from("matches")
+            .select("*")
+            .eq("tournament_id", id);
+          newMatchQuery = currentUser
+            ? newMatchQuery.eq("user_id", currentUser.id)
+            : newMatchQuery.is("user_id", null);
+          const { data: newMatches } = await newMatchQuery;
+          matchData = newMatches || [];
+        } else {
+          matchData = [];
+        }
       }
+
+      setMatches(matchData || []);
+      setTeams(teamsConverted);
+
+      const initial: Record<number, { a: number; b: number }> = {};
+      (matchData || []).forEach((m) => {
+        initial[m.id] = { a: m.score_a || 0, b: m.score_b || 0 };
+      });
+      setScores(initial);
     };
     load();
   }, [id]);
