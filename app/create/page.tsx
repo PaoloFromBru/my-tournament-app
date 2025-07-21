@@ -67,7 +67,8 @@ export default function CreatePage() {
     }
 
     setLoading(false);
-    window.location.href = `/run/${tournamentId}`;
+    const dest = userId ? `/run/${tournamentId}` : `/public/run/${tournamentId}`;
+    window.location.href = dest;
   };
 
   return (
