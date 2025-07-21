@@ -105,7 +105,7 @@ export default function SettingsPage() {
       const { error } = await supabase
         .from(table)
         .delete()
-        .or('user_id.is.null,user_id.eq.""');
+        .is("user_id", null);
       if (error) {
         alert(`Failed cleaning ${table}: ${error.message}`);
         return;
@@ -164,12 +164,14 @@ export default function SettingsPage() {
         <p className="text-sm text-red-700">
           This will permanently remove all your players, teams and tournaments.
         </p>
-        <Button variant="destructive" onClick={deleteAllData}>
-          Delete My Data
-        </Button>
-        <Button variant="destructive" onClick={cleanupDatabase}>
-          Database cleanup
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="destructive" onClick={deleteAllData}>
+            Delete My Data
+          </Button>
+          <Button variant="destructive" onClick={cleanupDatabase}>
+            Database cleanup
+          </Button>
+        </div>
       </section>
     </div>
   );
