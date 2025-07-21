@@ -50,7 +50,11 @@ export default function Header() {
       <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
         {/* Left: App identity */}
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🤖</span>
+          <img
+            src="/apple-touch-icon.png"
+            alt="Logo"
+            className="w-8 h-8"
+          />
           <div>
             <h1 className="text-lg font-semibold leading-tight">My Tournament App</h1>
             <p className="text-xs text-gray-500 hidden sm:block">{userEmail ?? ""}</p>
