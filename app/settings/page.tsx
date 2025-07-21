@@ -84,6 +84,37 @@ export default function SettingsPage() {
     alert("All data deleted.");
   };
 
+  const cleanupDatabase = async () => {
+    if (
+      !confirm(
+        "Remove all records without a user? This cannot be undone."
+      )
+    )
+      return;
+
+    const tables = [
+      "matches",
+      "tournament_teams",
+      "team_players",
+      "teams",
+      "tournaments",
+      "players",
+    ];
+
+    for (const table of tables) {
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .or('user_id.is.null,user_id.eq.""');
+      if (error) {
+        alert(`Failed cleaning ${table}: ${error.message}`);
+        return;
+      }
+    }
+
+    alert("Database cleanup complete.");
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-2xl font-semibold">Settings</h2>
@@ -135,6 +166,9 @@ export default function SettingsPage() {
         </p>
         <Button variant="destructive" onClick={deleteAllData}>
           Delete My Data
+        </Button>
+        <Button variant="destructive" onClick={cleanupDatabase}>
+          Database cleanup
         </Button>
       </section>
     </div>
