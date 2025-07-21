@@ -94,7 +94,6 @@ export default function SettingsPage() {
 
     const tables = [
       "matches",
-      "tournament_teams",
       "team_players",
       "teams",
       "tournaments",
