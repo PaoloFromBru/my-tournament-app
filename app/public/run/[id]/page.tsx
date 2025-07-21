@@ -117,7 +117,6 @@ export default function TournamentRunPage() {
       });
       setScores(initial);
     };
-
     load();
   }, [id]);
 
