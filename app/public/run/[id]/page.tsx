@@ -5,18 +5,18 @@ import { useParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabaseBrowser";
 
 interface Match {
-  id: number;
-  team_a: number;
-  team_b: number;
+  id: string;
+  team_a: string | null;
+  team_b: string | null;
   phase: string;
   scheduled_at: string | null;
-  winner?: number | null;
+  winner?: string | null;
   score_a?: number | null;
   score_b?: number | null;
 }
 
 interface Team {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -28,7 +28,7 @@ export default function TournamentRunPage() {
   const [tournament, setTournament] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [scores, setScores] = useState<Record<number, { a: number; b: number }>>({});
+  const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
   // ensures initial match generation only happens once
   const initialized = useRef(false);
@@ -85,7 +85,7 @@ export default function TournamentRunPage() {
       }));
 
       if (!matchData || matchData.length === 0) {
-        const pairs: { team_a: number; team_b: number }[] = [];
+        const pairs: { team_a: string; team_b: string }[] = [];
         for (let i = 0; i < teamsConverted.length; i += 2) {
           if (teamsConverted[i + 1]) {
             pairs.push({
@@ -121,7 +121,7 @@ export default function TournamentRunPage() {
       setMatches(matchData || []);
       setTeams(teamsConverted);
 
-      const initial: Record<number, { a: number; b: number }> = {};
+      const initial: Record<string, { a: number; b: number }> = {};
       (matchData || []).forEach((m) => {
         initial[m.id] = { a: m.score_a || 0, b: m.score_b || 0 };
       });
@@ -130,7 +130,7 @@ export default function TournamentRunPage() {
     load();
   }, [id]);
 
-  const teamName = (tid: number | null | undefined) =>
+  const teamName = (tid: string | null | undefined) =>
     tid === null || tid === undefined
       ? "BYE"
       : teams.find((t) => t.id === tid)?.name || "Unknown team";
@@ -156,7 +156,9 @@ export default function TournamentRunPage() {
     const currentMatches = matches.filter(
       (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound
     );
-    const winners = currentMatches.map((m) => m.winner).filter((w): w is number => Boolean(w));
+    const winners = currentMatches
+      .map((m) => m.winner)
+      .filter((w): w is string => Boolean(w));
     if (winners.length !== currentMatches.length) return;
 
     if (winners.length === 1) {
@@ -164,15 +166,15 @@ export default function TournamentRunPage() {
       return;
     }
 
-    const byeCounts: Record<number, number> = {};
+    const byeCounts: Record<string, number> = {};
     matches.forEach((m) => {
       if ((m.team_a && !m.team_b) || (m.team_b && !m.team_a)) {
-        const id = (m.team_a || m.team_b) as number;
+        const id = (m.team_a || m.team_b) as string;
         byeCounts[id] = (byeCounts[id] || 0) + 1;
       }
     });
 
-    const pairings: { team_a: number; team_b: number | null; winner?: number }[] = [];
+    const pairings: { team_a: string; team_b: string | null; winner?: string }[] = [];
     const ordered = [...winners];
 
     if (ordered.length % 2 === 1) {
