@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabaseBrowser";
 
 export default function LoginOverlay({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isPublic = pathname.includes("/public");
+  const isPublic = pathname === "/" || pathname.includes("/public");
   const [user, setUser] = useState<any>(undefined);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
