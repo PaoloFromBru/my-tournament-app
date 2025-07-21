@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function DemoPage() {
-  const [tournament, setTournament] = useState(null);
-  const [teams, setTeams] = useState([]);
+  const [tournament, setTournament] = useState<any | null>(null);
+  const [teams, setTeams] = useState<any[]>([]);
 
   useEffect(() => {
     const load = async () => {
