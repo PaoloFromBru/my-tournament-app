@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function CreatePage() {
   const [step, setStep] = useState(1);
@@ -10,7 +9,7 @@ export default function CreatePage() {
 
   const handleCreateTournament = async () => {
     setLoading(true);
-    const tournamentId = uuidv4();
+    const tournamentId = crypto.randomUUID();
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id ?? null;
 
@@ -30,7 +29,7 @@ export default function CreatePage() {
     }
 
     const teamInserts = tournament.teams.map((t) => ({
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       tournament_id: tournamentId,
       name: t.name,
       user_id: userId,
