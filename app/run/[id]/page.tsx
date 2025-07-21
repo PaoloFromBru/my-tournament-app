@@ -5,18 +5,18 @@ import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
 
 interface Match {
-  id: number;
-  team_a: number;
-  team_b: number;
+  id: string | number;
+  team_a: string | number;
+  team_b: string | number;
   phase: string;
   scheduled_at: string | null;
-  winner?: number | null;
+  winner?: string | number | null;
   score_a?: number | null;
   score_b?: number | null;
 }
 
 interface Team {
-  id: number;
+  id: string | number;
   name: string;
 }
 
@@ -28,7 +28,7 @@ export default function TournamentRunPage() {
   const [tournament, setTournament] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [scores, setScores] = useState<Record<number, { a: number; b: number }>>({});
+  const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
   // ensures initial match generation only happens once
   const initialized = useRef(false);
@@ -106,19 +106,19 @@ export default function TournamentRunPage() {
       setMatches(matchData || []);
       setTeams(teamsConverted);
 
-      const initial: Record<number, { a: number; b: number }> = {};
+      const initial: Record<string, { a: number; b: number }> = {};
       (matchData || []).forEach((m) => {
-        initial[m.id] = { a: m.score_a || 0, b: m.score_b || 0 };
+        initial[String(m.id)] = { a: m.score_a || 0, b: m.score_b || 0 };
       });
       setScores(initial);
     };
     load();
   }, [id]);
 
-  const teamName = (tid: number | null | undefined) =>
+  const teamName = (tid: string | number | null | undefined) =>
     tid === null || tid === undefined
       ? "BYE"
-      : teams.find((t) => t.id === tid)?.name || "Unknown team";
+      : teams.find((t) => String(t.id) === String(tid))?.name || "Unknown team";
 
   const triggerConfetti = () => {
     const container = document.createElement("div");
@@ -203,8 +203,8 @@ export default function TournamentRunPage() {
 
       const initial = { ...scores };
       (newMatches || []).forEach((m) => {
-        if (!initial[m.id]) {
-          initial[m.id] = { a: m.score_a || 0, b: m.score_b || 0 };
+        if (!initial[String(m.id)]) {
+          initial[String(m.id)] = { a: m.score_a || 0, b: m.score_b || 0 };
         }
       });
       setScores(initial);
@@ -212,7 +212,7 @@ export default function TournamentRunPage() {
   };
 
   const saveResult = async (m: Match) => {
-    const sc = scores[m.id] || { a: 0, b: 0 };
+    const sc = scores[String(m.id)] || { a: 0, b: 0 };
     const winner = sc.a === sc.b ? null : sc.a > sc.b ? m.team_a : m.team_b;
     let updateQuery = supabase
       .from("matches")
@@ -234,14 +234,14 @@ export default function TournamentRunPage() {
     field: "a" | "b",
     value: number
   ) => {
-    const current = scores[m.id] || { a: m.score_a || 0, b: m.score_b || 0 };
+    const current = scores[String(m.id)] || { a: m.score_a || 0, b: m.score_b || 0 };
     const updated = {
       ...current,
       [field]: value,
     } as { a: number; b: number };
     setScores((prev) => ({
       ...prev,
-      [m.id]: updated,
+      [String(m.id)]: updated,
     }));
 
     let scoreQuery = supabase
@@ -314,7 +314,7 @@ export default function TournamentRunPage() {
                       <input
                         type="number"
                         className="w-12 border"
-                        value={scores[m.id]?.a ?? 0}
+                        value={scores[String(m.id)]?.a ?? 0}
                         onChange={(e) =>
                           updateScore(
                             m,
@@ -329,7 +329,7 @@ export default function TournamentRunPage() {
                       <input
                         type="number"
                         className="w-12 border"
-                        value={scores[m.id]?.b ?? 0}
+                        value={scores[String(m.id)]?.b ?? 0}
                         onChange={(e) =>
                           updateScore(
                             m,
