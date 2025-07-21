@@ -11,10 +11,10 @@ export default function Home() {
           <br />No sign-up required to get started.
         </p>
         <a
-          href="/demo"
+          href="/create"
           className="bg-indigo-600 text-white py-3 px-6 rounded-lg text-lg hover:bg-indigo-700 transition"
         >
-          Try the Demo
+          Create your Tournament
         </a>
       </section>
 

@@ -11,12 +11,15 @@ export default function CreatePage() {
   const handleCreateTournament = async () => {
     setLoading(true);
     const tournamentId = uuidv4();
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id ?? null;
 
     const { error: tournamentError } = await supabase.from('tournaments').insert([
       {
         id: tournamentId,
         name: tournament.name,
         sport: tournament.sport,
+        user_id: userId,
       },
     ]);
 
@@ -30,7 +33,9 @@ export default function CreatePage() {
       id: uuidv4(),
       tournament_id: tournamentId,
       name: t.name,
+      user_id: userId,
     }));
+    const teamIds = teamInserts.map((t) => t.id);
 
     const { error: teamError } = await supabase.from('teams').insert(teamInserts);
 
@@ -40,8 +45,29 @@ export default function CreatePage() {
       return;
     }
 
+    await supabase.from('tournament_teams').insert(
+      teamIds.map((id) => ({ tournament_id: tournamentId, team_id: id, user_id: userId }))
+    );
+
+    const pairs: { team_a: string; team_b: string | null }[] = [];
+    for (let i = 0; i < teamIds.length; i += 2) {
+      pairs.push({ team_a: teamIds[i], team_b: teamIds[i + 1] ?? null });
+    }
+    if (pairs.length) {
+      await supabase.from('matches').insert(
+        pairs.map((p) => ({
+          team_a: p.team_a,
+          team_b: p.team_b,
+          phase: 'round1',
+          scheduled_at: null,
+          tournament_id: tournamentId,
+          user_id: userId,
+        }))
+      );
+    }
+
     setLoading(false);
-    window.location.href = `/tournaments/${tournamentId}`;
+    window.location.href = `/run/${tournamentId}`;
   };
 
   return (

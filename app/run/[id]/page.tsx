@@ -42,26 +42,27 @@ export default function TournamentRunPage() {
       const currentUser = userData.user;
       setUser(currentUser);
 
-      if (currentUser) {
-        const { data: t } = await supabase
-          .from("tournaments")
-          .select("*")
-          .eq("id", id)
-          .eq("user_id", currentUser.id)
-          .single();
-        setTournament(t);
+      const tournamentQuery = supabase
+        .from("tournaments")
+        .select("*")
+        .eq("id", id);
+      if (currentUser) tournamentQuery.eq("user_id", currentUser.id);
+      const { data: t } = await tournamentQuery.single();
+      setTournament(t);
 
-        let { data: matchData } = await supabase
-          .from("matches")
-          .select("*")
-          .eq("tournament_id", id)
-          .eq("user_id", currentUser.id);
+      let matchQuery = supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", id);
+      if (currentUser) matchQuery = matchQuery.eq("user_id", currentUser.id);
+      let { data: matchData } = await matchQuery;
 
-        const { data: teamData } = await supabase
-          .from("tournament_teams")
-          .select("team_id, teams(id, name, user_id)")
-          .eq("tournament_id", id)
-          .eq("teams.user_id", currentUser.id);
+      const teamQuery = supabase
+        .from("tournament_teams")
+        .select("team_id, teams(id, name, user_id)")
+        .eq("tournament_id", id);
+      if (currentUser) teamQuery.eq("teams.user_id", currentUser.id);
+      const { data: teamData } = await teamQuery;
 
         const teamsConverted = (teamData || []).map((tt: any) => ({
           id: tt.team_id,
@@ -85,14 +86,17 @@ export default function TournamentRunPage() {
                 phase: "round1",
                 scheduled_at: null,
                 tournament_id: id,
-                user_id: currentUser.id,
+                user_id: currentUser?.id ?? null,
               }))
             );
-            const { data: newMatches } = await supabase
+            let newMatchQuery = supabase
               .from("matches")
               .select("*")
-              .eq("tournament_id", id)
-              .eq("user_id", currentUser.id);
+              .eq("tournament_id", id);
+            newMatchQuery = currentUser
+              ? newMatchQuery.eq("user_id", currentUser.id)
+              : newMatchQuery.is("user_id", null);
+            const { data: newMatches } = await newMatchQuery;
             matchData = newMatches || [];
           } else {
             matchData = [];
@@ -133,7 +137,6 @@ export default function TournamentRunPage() {
   };
 
   const nextRound = async () => {
-    if (!user) return;
     const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
     const currentRound = Math.max(...phaseNums, 1);
     const currentMatches = matches.filter(
@@ -186,14 +189,17 @@ export default function TournamentRunPage() {
           phase: `round${nextRoundNum}`,
           scheduled_at: null,
           tournament_id: id,
-          user_id: user.id,
+          user_id: user?.id ?? null,
         }))
       );
-      const { data: newMatches } = await supabase
+      let roundQuery = supabase
         .from("matches")
         .select("*")
-        .eq("tournament_id", id)
-        .eq("user_id", user.id);
+        .eq("tournament_id", id);
+      roundQuery = user
+        ? roundQuery.eq("user_id", user.id)
+        : roundQuery.is("user_id", null);
+      const { data: newMatches } = await roundQuery;
       setMatches(newMatches || []);
 
       const initial = { ...scores };
@@ -207,14 +213,16 @@ export default function TournamentRunPage() {
   };
 
   const saveResult = async (m: Match) => {
-    if (!user) return;
     const sc = scores[m.id] || { a: 0, b: 0 };
     const winner = sc.a === sc.b ? null : sc.a > sc.b ? m.team_a : m.team_b;
-    await supabase
+    let updateQuery = supabase
       .from("matches")
       .update({ winner, score_a: sc.a, score_b: sc.b })
-      .eq("id", m.id)
-      .eq("user_id", user.id);
+      .eq("id", m.id);
+    updateQuery = user
+      ? updateQuery.eq("user_id", user.id)
+      : updateQuery.is("user_id", null);
+    await updateQuery;
     setMatches((prev) =>
       prev.map((mt) =>
         mt.id === m.id ? { ...mt, winner, score_a: sc.a, score_b: sc.b } : mt
@@ -237,15 +245,17 @@ export default function TournamentRunPage() {
       [m.id]: updated,
     }));
 
-    if (!user) return;
-    await supabase
+    let scoreQuery = supabase
       .from("matches")
       .update({
         score_a: updated.a,
         score_b: updated.b,
       })
-      .eq("id", m.id)
-      .eq("user_id", user.id);
+      .eq("id", m.id);
+    scoreQuery = user
+      ? scoreQuery.eq("user_id", user.id)
+      : scoreQuery.is("user_id", null);
+    await scoreQuery;
     setMatches((prev) =>
       prev.map((mt) =>
         mt.id === m.id
