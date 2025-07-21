@@ -84,6 +84,36 @@ export default function SettingsPage() {
     alert("All data deleted.");
   };
 
+  const cleanupDatabase = async () => {
+    if (
+      !confirm(
+        "Remove all records without a user? This cannot be undone."
+      )
+    )
+      return;
+
+    const tables = [
+      "matches",
+      "team_players",
+      "teams",
+      "tournaments",
+      "players",
+    ];
+
+    for (const table of tables) {
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .is("user_id", null);
+      if (error) {
+        alert(`Failed cleaning ${table}: ${error.message}`);
+        return;
+      }
+    }
+
+    alert("Database cleanup complete.");
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-2xl font-semibold">Settings</h2>
@@ -133,9 +163,14 @@ export default function SettingsPage() {
         <p className="text-sm text-red-700">
           This will permanently remove all your players, teams and tournaments.
         </p>
-        <Button variant="destructive" onClick={deleteAllData}>
-          Delete My Data
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="destructive" onClick={deleteAllData}>
+            Delete My Data
+          </Button>
+          <Button variant="destructive" onClick={cleanupDatabase}>
+            Database cleanup
+          </Button>
+        </div>
       </section>
     </div>
   );

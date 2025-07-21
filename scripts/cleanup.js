@@ -13,7 +13,6 @@ const supabase = createClient(url, key);
 async function cleanup() {
   const tables = [
     'matches',
-    'tournament_teams',
     'team_players',
     'teams',
     'tournaments',
@@ -24,7 +23,7 @@ async function cleanup() {
     const { error } = await supabase
       .from(table)
       .delete()
-      .or('user_id.is.null,user_id.eq.""');
+      .is('user_id', null);
     if (error) {
       console.error(`Failed cleaning ${table}:`, error.message);
     }
