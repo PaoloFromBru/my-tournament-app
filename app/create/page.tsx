@@ -1,9 +1,48 @@
 'use client';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function CreatePage() {
   const [step, setStep] = useState(1);
   const [tournament, setTournament] = useState({ name: '', sport: '', teams: [] as { name: string }[] });
+  const [loading, setLoading] = useState(false);
+
+  const handleCreateTournament = async () => {
+    setLoading(true);
+    const tournamentId = uuidv4();
+
+    const { error: tournamentError } = await supabase.from('tournaments').insert([
+      {
+        id: tournamentId,
+        name: tournament.name,
+        sport: tournament.sport,
+      },
+    ]);
+
+    if (tournamentError) {
+      alert('Error creating tournament');
+      setLoading(false);
+      return;
+    }
+
+    const teamInserts = tournament.teams.map((t) => ({
+      id: uuidv4(),
+      tournament_id: tournamentId,
+      name: t.name,
+    }));
+
+    const { error: teamError } = await supabase.from('teams').insert(teamInserts);
+
+    if (teamError) {
+      alert('Error adding teams');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    window.location.href = `/tournament/${tournamentId}`;
+  };
 
   return (
     <main className="max-w-3xl mx-auto p-6">
@@ -42,10 +81,11 @@ export default function CreatePage() {
           <h2 className="text-xl font-semibold">Teams</h2>
           <TeamInput teams={tournament.teams} setTournament={setTournament} />
           <button
+            disabled={loading}
             className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-            onClick={() => console.log('Create tournament', tournament)}
+            onClick={handleCreateTournament}
           >
-            Start Tournament
+            {loading ? 'Creating...' : 'Start Tournament'}
           </button>
         </div>
       )}
