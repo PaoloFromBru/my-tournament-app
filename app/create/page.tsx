@@ -41,7 +41,7 @@ export default function CreatePage() {
     }
 
     setLoading(false);
-    window.location.href = `/tournament/${tournamentId}`;
+    window.location.href = `/tournaments/${tournamentId}`;
   };
 
   return (
