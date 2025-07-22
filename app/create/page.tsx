@@ -44,9 +44,14 @@ export default function CreatePage() {
       return;
     }
 
-    await supabase.from('tournament_teams').insert(
-      teamIds.map((id) => ({ tournament_id: tournamentId, team_id: id, user_id: userId }))
+    const { error: ttError } = await supabase.from('tournament_teams').insert(
+      teamIds.map((id) => (
+        userId ? { tournament_id: tournamentId, team_id: id, user_id: userId } : { tournament_id: tournamentId, team_id: id }
+      ))
     );
+    if (ttError) {
+      console.error('Error adding tournament teams', ttError.message);
+    }
 
     const pairs: { team_a: string; team_b: string | null }[] = [];
     for (let i = 0; i < teamIds.length; i += 2) {

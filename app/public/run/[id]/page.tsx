@@ -70,7 +70,7 @@ export default function TournamentRunPage() {
         .from("tournament_teams")
         .select("team_id")
         .eq("tournament_id", id);
-      const teamIds = (ttData || []).map((tt: any) => tt.team_id);
+      let teamIds = (ttData || []).map((tt: any) => tt.team_id);
       let teamsConverted: Team[] = [];
       if (teamIds.length) {
         const { data: teamData } = await supabase
@@ -78,6 +78,13 @@ export default function TournamentRunPage() {
           .select("id, name")
           .in("id", teamIds);
         teamsConverted = teamData || [];
+      } else {
+        const { data: teamData } = await supabase
+          .from("teams")
+          .select("id, name")
+          .eq("tournament_id", id);
+        teamsConverted = teamData || [];
+        teamIds = teamsConverted.map((t) => t.id);
       }
 
       let matchesList = matchData || [];
@@ -91,7 +98,6 @@ export default function TournamentRunPage() {
                 ? String(teamsConverted[i + 1].id)
                 : null,
           });
-
         }
         if (pairs.length) {
           await supabase.from("matches").insert(
