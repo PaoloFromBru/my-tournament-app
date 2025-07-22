@@ -24,7 +24,8 @@ export default function TournamentRunPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const [user, setUser] = useState<any>(null);
+  // public demo does not use auth, keep user null
+  const [user] = useState<any>(null);
   const [tournament, setTournament] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -53,46 +54,44 @@ export default function TournamentRunPage() {
     initialized.current = true;
 
     const load = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const currentUser = userData.user;
-      setUser(currentUser);
-
-      const tournamentQuery = supabase
+      const { data: t } = await supabase
         .from("tournaments")
         .select("*")
-        .eq("id", id);
-      if (currentUser) tournamentQuery.eq("user_id", currentUser.id);
-      const { data: t } = await tournamentQuery.single();
+        .eq("id", id)
+        .single();
       setTournament(t);
 
-      let matchQuery = supabase
+      const { data: matchData } = await supabase
         .from("matches")
         .select("*")
         .eq("tournament_id", id);
-      if (currentUser) matchQuery = matchQuery.eq("user_id", currentUser.id);
-      let { data: matchData } = await matchQuery;
 
-      const teamQuery = supabase
+      const { data: ttData } = await supabase
         .from("tournament_teams")
-        .select("team_id, teams(id, name, user_id)")
+        .select("team_id")
         .eq("tournament_id", id);
-      if (currentUser) teamQuery.eq("teams.user_id", currentUser.id);
-      const { data: teamData } = await teamQuery;
+      const teamIds = (ttData || []).map((tt: any) => tt.team_id);
+      let teamsConverted: Team[] = [];
+      if (teamIds.length) {
+        const { data: teamData } = await supabase
+          .from("teams")
+          .select("id, name")
+          .in("id", teamIds);
+        teamsConverted = teamData || [];
+      }
 
-      const teamsConverted = (teamData || []).map((tt: any) => ({
-        id: tt.team_id,
-        name: tt.teams?.name ?? "",
-      }));
-
-      if (!matchData || matchData.length === 0) {
-        const pairs: { team_a: string; team_b: string }[] = [];
+      let matchesList = matchData || [];
+      if (matchesList.length === 0 && teamsConverted.length) {
+        const pairs: { team_a: string; team_b: string | null }[] = [];
         for (let i = 0; i < teamsConverted.length; i += 2) {
-          if (teamsConverted[i + 1]) {
-            pairs.push({
-              team_a: teamsConverted[i].id,
-              team_b: teamsConverted[i + 1].id,
-            });
-          }
+          pairs.push({
+            team_a: String(teamsConverted[i].id),
+            team_b:
+              teamsConverted[i + 1] !== undefined
+                ? String(teamsConverted[i + 1].id)
+                : null,
+          });
+
         }
         if (pairs.length) {
           await supabase.from("matches").insert(
@@ -101,28 +100,23 @@ export default function TournamentRunPage() {
               phase: "round1",
               scheduled_at: null,
               tournament_id: id,
-              user_id: currentUser?.id ?? null,
+              user_id: null,
             }))
           );
-          let newMatchQuery = supabase
+          const { data: newMatches } = await supabase
             .from("matches")
             .select("*")
-            .eq("tournament_id", id);
-          newMatchQuery = currentUser
-            ? newMatchQuery.eq("user_id", currentUser.id)
-            : newMatchQuery.is("user_id", null);
-          const { data: newMatches } = await newMatchQuery;
-          matchData = newMatches || [];
-        } else {
-          matchData = [];
+            .eq("tournament_id", id)
+            .is("user_id", null);
+          matchesList = newMatches || [];
         }
       }
 
-      setMatches(matchData || []);
+      setMatches(matchesList);
       setTeams(teamsConverted);
 
       const initial: Record<string, { a: number; b: number }> = {};
-      (matchData || []).forEach((m) => {
+      matchesList.forEach((m) => {
         initial[String(m.id)] = { a: m.score_a || 0, b: m.score_b || 0 };
       });
       setScores(initial);
