@@ -106,6 +106,33 @@ export default function TournamentsPage() {
     setTournaments((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const deleteAllTournaments = async () => {
+    if (!user) return;
+    if (tournaments.length === 0) return;
+    if (!confirm("Delete ALL tournaments?")) return;
+    setLoading(true);
+    try {
+      const ids = tournaments.map((t) => t.id);
+      await supabase
+        .from("matches")
+        .delete()
+        .in("tournament_id", ids)
+        .eq("user_id", user.id);
+      await supabase
+        .from("tournament_teams")
+        .delete()
+        .in("tournament_id", ids);
+      await supabase
+        .from("tournaments")
+        .delete()
+        .in("id", ids)
+        .eq("user_id", user.id);
+      setTournaments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   async function generateSchedule(id: string) {
     const { data: userData } = await supabase.auth.getUser();
     const currentUser = userData.user;
@@ -194,6 +221,7 @@ export default function TournamentsPage() {
       onView={(id) => router.push(`/tournaments/${id}`)}
       onShare={(id) => router.push(`/tournaments/${id}/public`)}
       onDelete={deleteTournament}
+      onDeleteAll={deleteAllTournaments}
       loading={loading}
     />
   );
