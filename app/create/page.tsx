@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function CreatePage() {
   const [step, setStep] = useState(1);
@@ -10,7 +9,7 @@ export default function CreatePage() {
 
   const handleCreateTournament = async () => {
     setLoading(true);
-    const tournamentId = uuidv4();
+    const tournamentId = crypto.randomUUID();
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData.user?.id ?? null;
 
@@ -30,7 +29,7 @@ export default function CreatePage() {
     }
 
     const teamInserts = tournament.teams.map((t) => ({
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       tournament_id: tournamentId,
       name: t.name,
       user_id: userId,
@@ -45,9 +44,14 @@ export default function CreatePage() {
       return;
     }
 
-    await supabase.from('tournament_teams').insert(
-      teamIds.map((id) => ({ tournament_id: tournamentId, team_id: id, user_id: userId }))
+    const { error: ttError } = await supabase.from('tournament_teams').insert(
+      teamIds.map((id) => (
+        userId ? { tournament_id: tournamentId, team_id: id, user_id: userId } : { tournament_id: tournamentId, team_id: id }
+      ))
     );
+    if (ttError) {
+      console.error('Error adding tournament teams', ttError.message);
+    }
 
     const pairs: { team_a: string; team_b: string | null }[] = [];
     for (let i = 0; i < teamIds.length; i += 2) {
@@ -67,7 +71,8 @@ export default function CreatePage() {
     }
 
     setLoading(false);
-    window.location.href = `/run/${tournamentId}`;
+    const dest = userId ? `/run/${tournamentId}` : `/public/run/${tournamentId}`;
+    window.location.href = dest;
   };
 
   return (
