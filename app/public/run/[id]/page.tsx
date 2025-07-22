@@ -91,6 +91,7 @@ export default function TournamentRunPage() {
                 ? String(teamsConverted[i + 1].id)
                 : null,
           });
+
         }
         if (pairs.length) {
           await supabase.from("matches").insert(
@@ -120,7 +121,6 @@ export default function TournamentRunPage() {
       });
       setScores(initial);
     };
-
     load();
   }, [id]);
 
