@@ -184,6 +184,49 @@ export default function TeamsPage() {
     setTeams((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const deleteAllTeams = async () => {
+    if (!user) return;
+    if (teams.length === 0) return;
+    if (!confirm("Delete ALL teams?")) return;
+    setLoading(true);
+    try {
+      const ids = teams.map((t) => t.id);
+      await supabase
+        .from("team_players")
+        .delete()
+        .in("team_id", ids)
+        .eq("user_id", user.id);
+
+      await supabase
+        .from("matches")
+        .update({ team_a: null })
+        .in("team_a", ids)
+        .eq("user_id", user.id);
+
+      await supabase
+        .from("matches")
+        .update({ team_b: null })
+        .in("team_b", ids)
+        .eq("user_id", user.id);
+
+      await supabase
+        .from("matches")
+        .update({ winner: null })
+        .in("winner", ids)
+        .eq("user_id", user.id);
+
+      await supabase
+        .from("teams")
+        .delete()
+        .in("id", ids)
+        .eq("user_id", user.id);
+
+      setTeams([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateBalancedTeams = async () => {
     if (!user) return;
     setLoading(true);
@@ -240,6 +283,7 @@ export default function TeamsPage() {
       onAdd={addTeam}
       onEdit={editTeam}
       onDelete={deleteTeam}
+      onDeleteAll={deleteAllTeams}
       onGenerateBalanced={generateBalancedTeams}
       loading={loading}
     />

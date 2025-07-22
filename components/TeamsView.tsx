@@ -23,6 +23,7 @@ interface Props {
   onEdit: (team: Team) => void;
   onDelete: (id: number) => void;
   onGenerateBalanced: () => void;
+  onDeleteAll: () => void;
   loading?: boolean;
 }
 
@@ -43,6 +44,7 @@ export default function TeamsView({
   onEdit,
   onDelete,
   onGenerateBalanced,
+  onDeleteAll,
   loading,
 }: Props) {
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
@@ -74,9 +76,14 @@ export default function TeamsView({
       {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Teams</h2>
-        <Button variant="outline" onClick={onGenerateBalanced}>
-          AI balanced teams
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onGenerateBalanced}>
+            AI balanced teams
+          </Button>
+          <Button variant="destructive" onClick={onDeleteAll}>
+            Delete all
+          </Button>
+        </div>
       </div>
 
       {/* Add New Team */}
