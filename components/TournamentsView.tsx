@@ -22,6 +22,7 @@ interface Props {
   onView: (id: string) => void;
   onShare: (id: string) => void;
   onDelete: (id: string) => void;
+  onDeleteAll: () => void;
   loading?: boolean;
 }
 
@@ -33,6 +34,7 @@ export default function TournamentsView({
   onView,
   onShare,
   onDelete,
+  onDeleteAll,
   loading,
 }: Props) {
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
@@ -88,7 +90,12 @@ export default function TournamentsView({
 
       {/* Tournaments List */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Tournaments</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Tournaments</h2>
+          <Button variant="destructive" onClick={onDeleteAll}>
+            Delete all
+          </Button>
+        </div>
 
         {tournaments.map((tournament) => (
           <div
