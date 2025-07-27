@@ -3,13 +3,30 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Backend Setup
 
 1. Create a [Supabase](https://supabase.com) project.
-2. In the Supabase dashboard create two tables:
+2. In the Supabase dashboard create three tables:
    - **players** with columns `id` (uuid, primary key), `name` (text), `offense` (int4), `defense` (int4).
    - **tournaments** with columns `id` (uuid, primary key) and `name` (text).
-3. Under **Authentication** enable email login and disable anonymous sign ups.
-4. In the **Email** settings choose **Email OTP** for "Confirm signup" so new accounts receive a numeric code instead of a magic link. Also set the password recovery redirect URL to `<your site>/reset` so the reset link leads to the page for choosing a new password.
-5. Set the SMTP settings to use your [Resend](https://resend.com) credentials so Supabase will send the emails via Resend.
-6. Grab the project URL and anon key from the Supabase settings and add them to an `.env` file using the variables shown in `.env.example`.
+   - **user_profiles** with column `user_id` (uuid, primary key).
+3. Run the following SQL so a profile row is automatically created whenever a new user signs up:
+
+   ```sql
+   create or replace function public.handle_new_user()
+   returns trigger as $$
+   begin
+     insert into public.user_profiles (user_id)
+     values (new.id);
+     return new;
+   end;
+   $$ language plpgsql;
+
+   create trigger on_auth_user_created
+   after insert on auth.users
+   for each row execute function public.handle_new_user();
+   ```
+4. Under **Authentication** enable email login and disable anonymous sign ups.
+5. In the **Email** settings choose **Email OTP** for "Confirm signup" so new accounts receive a numeric code instead of a magic link. Also set the password recovery redirect URL to `<your site>/reset` so the reset link leads to the page for choosing a new password.
+6. Set the SMTP settings to use your [Resend](https://resend.com) credentials so Supabase will send the emails via Resend.
+7. Grab the project URL and anon key from the Supabase settings and add them to an `.env` file using the variables shown in `.env.example`.
 
 ## Authentication
 
