@@ -1,80 +1,113 @@
-import { Button } from "@/components/ui/button";
+"use client";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
 
-export interface Player {
-  id: number;
-  name: string;
-  offense: number;
-  defense: number;
-}
+export default function PlayersView() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [players, setPlayers] = useState<any[]>([]);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-interface Props {
-  players: Player[];
-  onAdd: React.FormEventHandler<HTMLFormElement>;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
-  onChangeSkills: (id: number) => void;
-}
+  // Step 1: Get logged-in user
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-export default function PlayersView({ players, onAdd, onEdit, onDelete, onChangeSkills }: Props) {
+      if (user) setUserId(user.id);
+    };
+    getUser();
+  }, []);
+
+  // Step 2: Fetch sport_id from user_profiles
+  useEffect(() => {
+    if (!userId) return;
+
+    const loadSportSkills = async () => {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("sport_id")
+        .eq("user_id", userId)
+        .single();
+
+      if (!profile?.sport_id) return;
+
+      // Step 3: Get skills for the sport
+      const { data: sport } = await supabase
+        .from("sports")
+        .select("skills")
+        .eq("id", profile.sport_id)
+        .single();
+
+      if (sport?.skills) setSkills(sport.skills as string[]);
+    };
+
+    loadSportSkills();
+  }, [userId]);
+
+  // Step 4: Fetch players
+  useEffect(() => {
+    const loadPlayers = async () => {
+      const { data } = await supabase
+        .from("players")
+        .select("id, name, skills")
+        .order("name");
+
+      setPlayers((data || []) as any[]);
+      setLoading(false);
+    };
+    loadPlayers();
+  }, []);
+
+  // Step 5: Update player skill
+  const updateSkill = async (
+    playerId: number,
+    skillKey: string,
+    value: number,
+  ) => {
+    const player = players.find((p) => p.id === playerId);
+    const updatedSkills = { ...(player?.skills || {}), [skillKey]: value };
+
+    await supabase
+      .from("players")
+      .update({ skills: updatedSkills })
+      .eq("id", playerId);
+
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === playerId ? { ...p, skills: updatedSkills } : p,
+      ),
+    );
+  };
+
+  if (loading) return <p className="p-4">Loading players...</p>;
+
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">Players</h2>
-      </div>
-
-      {/* Add New Player */}
-      <form
-        onSubmit={onAdd}
-        className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 space-y-4"
-      >
-        <div className="grid sm:grid-cols-3 gap-4">
-          <input
-            name="name"
-            type="text"
-            placeholder="Player name"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-          />
-          <input
-            name="offense"
-            type="number"
-            placeholder="Offense (0-10)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            min={0}
-            max={10}
-          />
-          <input
-            name="defense"
-            type="number"
-            placeholder="Defense (0-10)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            min={0}
-            max={10}
-          />
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-xl font-bold mb-4">Players</h1>
+      {players.map((player) => (
+        <div key={player.id} className="mb-6 border-b pb-4">
+          <h2 className="text-lg font-semibold">{player.name}</h2>
+          {skills.map((skill) => (
+            <div key={skill} className="mt-2 flex items-center">
+              <label className="w-32">{skill}</label>
+              <input
+                type="range"
+                min="0"
+                max="5"
+                step="1"
+                value={player.skills?.[skill] || 0}
+                onChange={(e) =>
+                  updateSkill(player.id, skill, parseInt(e.target.value))
+                }
+                className="w-full"
+              />
+              <span className="ml-2">{player.skills?.[skill] || 0}</span>
+            </div>
+          ))}
         </div>
-        <Button type="submit" className="mt-2">Add Player</Button>
-      </form>
-
-      {/* Player List */}
-      <div className="space-y-3">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
-          >
-            <div className="text-sm">
-              <div className="font-medium">{player.name}</div>
-              <div className="text-gray-500">O:{player.offense} D:{player.defense}</div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
-              <Button className="bg-blue-500 hover:bg-blue-600" onClick={() => onEdit(player.id)}>Edit</Button>
-              <Button className="bg-amber-500 hover:bg-amber-600" onClick={() => onChangeSkills(player.id)}>Change Skills</Button>
-              <Button variant="destructive" onClick={() => onDelete(player.id)}>Delete</Button>
-            </div>
-          </div>
-        ))}
-      </div>
+      ))}
     </div>
   );
 }
