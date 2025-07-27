@@ -114,7 +114,7 @@ export default function PlayersView() {
         .update({ skills: updatedPlayers.find((p) => p.id === playerId).skills })
         .eq("id", profileId);
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("player_profiles")
         .insert({
           player_id: playerId,
@@ -124,11 +124,13 @@ export default function PlayersView() {
         .select()
         .single();
 
-      setPlayers((prev) =>
-        prev.map((p) =>
-          p.id === playerId ? { ...p, profile_id: data!.id, skills: data!.skills } : p
-        )
-      );
+      if (!error && data) {
+        setPlayers((prev) =>
+          prev.map((p) =>
+            p.id === playerId ? { ...p, profile_id: data.id, skills: data.skills } : p
+          )
+        );
+      }
     }
   };
 
@@ -136,27 +138,31 @@ export default function PlayersView() {
   const handleAddPlayer = async () => {
     if (!newPlayerName.trim() || !userId) return;
 
-    const { data: newPlayer } = await supabase
+    const { data: newPlayer, error: playerError } = await supabase
       .from("players")
       .insert({ name: newPlayerName.trim(), user_id: userId })
       .select()
       .single();
 
-    const { data: newProfile } = await supabase
+    if (playerError || !newPlayer) return;
+
+    const { data: newProfile, error: profileError } = await supabase
       .from("player_profiles")
       .insert({
-        player_id: newPlayer!.id,
+        player_id: newPlayer.id,
         sport_id: sportId,
         skills: {},
       })
       .select()
       .single();
 
+    if (profileError || !newProfile) return;
+
     setPlayers((prev) => [
       ...prev,
       {
         ...newPlayer,
-        profile_id: newProfile!.id,
+        profile_id: newProfile.id,
         skills: {},
       },
     ]);
