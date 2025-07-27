@@ -10,11 +10,59 @@ export default function SettingsPage() {
     ok: boolean;
     text: string;
   } | null>(null);
+  const [sports, setSports] = useState<{ id: string; display_name: string }[]>([]);
+  const [selectedSportId, setSelectedSportId] = useState("");
+  const [sportStatus, setSportStatus] = useState("");
+  const [sportLoading, setSportLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
+
+  useEffect(() => {
+    const loadSports = async () => {
+      const { data, error } = await supabase
+        .from("sports")
+        .select("id, display_name")
+        .order("display_name");
+      if (!error && data) setSports(data as any);
+    };
+    loadSports();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUserProfile = async () => {
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("sport_id")
+        .eq("user_id", user.id)
+        .single();
+      if (data?.sport_id) setSelectedSportId(data.sport_id);
+      setSportLoading(false);
+    };
+    fetchUserProfile();
+  }, [user]);
+
+  const handleSportChange = async (e: ChangeEvent<HTMLSelectElement>) => {
+    if (!user) return;
+    const newId = e.target.value;
+    setSelectedSportId(newId);
+    setSportStatus("Saving...");
+
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({ sport_id: newId })
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Failed to update sport:", error);
+      setSportStatus("\u274C Failed to save");
+    } else {
+      setSportStatus("\u2705 Saved");
+    }
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     setCsvFile(e.target.files?.[0] || null);
@@ -114,9 +162,38 @@ export default function SettingsPage() {
     alert("Database cleanup complete.");
   };
 
+  if (sportLoading) return <p className="p-4">Loading settings...</p>;
+
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-2xl font-semibold">Settings</h2>
+
+      <section className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+        <h3 className="font-semibold">User Settings</h3>
+        <div>
+          <label htmlFor="sport" className="block font-medium mb-2">
+            Preferred Sport
+          </label>
+          <select
+            id="sport"
+            value={selectedSportId}
+            onChange={handleSportChange}
+            className="w-full p-2 border border-gray-300 rounded-lg"
+          >
+            <option value="" disabled>
+              Select a sport
+            </option>
+            {sports.map((sport) => (
+              <option key={sport.id} value={sport.id}>
+                {sport.display_name}
+              </option>
+            ))}
+          </select>
+          {sportStatus && (
+            <p className="mt-2 text-sm text-gray-600">{sportStatus}</p>
+          )}
+        </div>
+      </section>
 
       <section className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
         <h3 className="font-semibold">Import from CSV</h3>
