@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { Button } from "./ui/button";
 
 export default function PlayersView() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -9,6 +10,10 @@ export default function PlayersView() {
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPlayerName, setNewPlayerName] = useState<string>("");
+  const [filter, setFilter] = useState<string>("");
+
+  const sortPlayers = (list: any[]) =>
+    list.slice().sort((a, b) => a.name.localeCompare(b.name));
 
   // 1. Load current user
   useEffect(() => {
@@ -81,7 +86,7 @@ export default function PlayersView() {
         })
       );
 
-      setPlayers(playersWithProfiles);
+      setPlayers(sortPlayers(playersWithProfiles));
       setLoading(false);
     };
 
@@ -158,16 +163,24 @@ export default function PlayersView() {
 
     if (profileError || !newProfile) return;
 
-    setPlayers((prev) => [
-      ...prev,
-      {
-        ...newPlayer,
-        profile_id: newProfile.id,
-        skills: {},
-      },
-    ]);
+    setPlayers((prev) =>
+      sortPlayers([
+        ...prev,
+        {
+          ...newPlayer,
+          profile_id: newProfile.id,
+          skills: {},
+        },
+      ])
+    );
 
     setNewPlayerName("");
+  };
+
+  const handleDeletePlayer = async (id: string) => {
+    await supabase.from("player_profiles").delete().eq("player_id", id);
+    await supabase.from("players").delete().eq("id", id);
+    setPlayers((prev) => prev.filter((p) => p.id !== id));
   };
 
   if (loading) return <p className="p-4">Loading players...</p>;
@@ -192,33 +205,56 @@ export default function PlayersView() {
         </button>
       </div>
 
-      {players.map((player) => (
-        <div key={player.id} className="mb-6 border-b pb-4">
-          <h2 className="text-lg font-semibold">{player.name}</h2>
-          {skillsList.map((skill) => (
-            <div key={skill} className="mt-2 flex items-center">
-              <label className="w-32">{skill}</label>
-              <input
-                type="range"
-                min="0"
-                max="5"
-                step="1"
-                value={player.skills?.[skill] || 0}
-                onChange={(e) =>
-                  updateSkill(
-                    player.id,
-                    player.profile_id,
-                    skill,
-                    parseInt(e.target.value)
-                  )
-                }
-                className="w-full"
-              />
-              <span className="ml-2">{player.skills?.[skill] || 0}</span>
+      <div className="mb-6">
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter players"
+          className="w-full border p-2 rounded"
+        />
+      </div>
+
+      {players
+        .filter((p) => p.name.toLowerCase().includes(filter.toLowerCase()))
+        .map((player) => (
+          <div
+            key={player.id}
+            className="mb-4 bg-slate-50 border border-gray-200 rounded-xl px-5 py-4 shadow-sm"
+          >
+            <div className="flex justify-between items-start mb-3">
+              <h2 className="text-lg font-semibold">{player.name}</h2>
+              <Button
+                variant="destructive"
+                onClick={() => handleDeletePlayer(player.id)}
+              >
+                Delete
+              </Button>
             </div>
-          ))}
-        </div>
-      ))}
+            {skillsList.map((skill) => (
+              <div key={skill} className="mt-2 flex items-center">
+                <label className="w-32">{skill}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={player.skills?.[skill] || 0}
+                  onChange={(e) =>
+                    updateSkill(
+                      player.id,
+                      player.profile_id,
+                      skill,
+                      parseInt(e.target.value)
+                    )
+                  }
+                  className="w-full"
+                />
+                <span className="ml-2">{player.skills?.[skill] || 0}</span>
+              </div>
+            ))}
+          </div>
+        ))}
     </div>
   );
 }
