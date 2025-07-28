@@ -72,12 +72,14 @@ export default function PlayersView() {
         .eq("players.user_id", userId)
         .order("name", { foreignTable: "players" });
 
-      const playersWithProfiles = (data || []).map((row: any) => ({
-        id: row.players.id,
-        name: row.players.name,
-        profile_id: row.id,
-        skills: row.skills || {},
-      }));
+      const playersWithProfiles = (data || [])
+        .filter((row: any) => row.players)
+        .map((row: any) => ({
+          id: row.players.id,
+          name: row.players.name,
+          profile_id: row.id,
+          skills: row.skills || {},
+        }));
 
       setPlayers(sortPlayers(playersWithProfiles));
       setLoading(false);
