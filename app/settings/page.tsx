@@ -112,6 +112,16 @@ export default function SettingsPage() {
         return;
       }
 
+      // If the CSV header defines the skills, update the sport info so
+      // the Players view knows about them
+      if (header.length) {
+        await supabase
+          .from("sports")
+          .update({ skills })
+          .eq("id", selectedSportId);
+        setSportSkills(skills);
+      }
+
       const players: { name: string; user_id: string }[] = [];
       const profiles: Record<string, number>[] = [];
 
