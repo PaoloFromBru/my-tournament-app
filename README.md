@@ -71,17 +71,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Importing Players from CSV
 
-On the Settings page you can bulk add players by uploading a CSV file. Each line
-of the file should contain three values: `name`, `offense`, and `defense`.
-Example:
+On the Settings page you can bulk add players by uploading a CSV file. The file
+should contain the player's `name` followed by one column for each skill of the
+selected sport. Example:
 
 ```
-name,offense,defense
-Alice,7,6
-Bob,5,8
+name,attack,defense,serve
+Alice,7,6,5
+Bob,5,8,6
 ```
 
-The first row can optionally be a header and will be ignored. Rows must include
-all three values. Both `,` and `;` separators are accepted. After choosing your
-file and clicking **Import Players**, a message will indicate whether the
-operation succeeded or failed.
+The first row can optionally be a header and will be ignored. Both `,` and `;`
+separators are accepted. After choosing your file and clicking **Import
+Players**, a message will indicate whether the operation succeeded or failed.
