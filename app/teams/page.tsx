@@ -62,33 +62,23 @@ export default function TeamsPage() {
     const load = async () => {
       const { data: playerRows } = await supabase
         .from("players")
-        .select("id, name")
+        .select("id, name, player_profiles(id, skills)")
         .eq("user_id", userId)
+        .eq("player_profiles.sport_id", sportId)
         .order("name");
 
-      const playersWithSkills = await Promise.all(
-        (playerRows || []).map(async (p: any) => {
-          const { data: profile } = await supabase
-            .from("player_profiles")
-            .select("skills")
-            .eq("player_id", p.id)
-            .eq("sport_id", sportId)
-            .single();
-          return { ...p, skills: profile?.skills || {} } as Player;
-        })
-      );
+      const playersWithSkills = (playerRows || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        skills: p.player_profiles?.skills || {},
+      })) as Player[];
 
       setPlayers(playersWithSkills);
 
-      const { data: teamRows } = await supabase
-        .from("teams")
-        .select("*")
-        .eq("user_id", userId);
-
-      const { data: teamPlayerRows } = await supabase
-        .from("team_players")
-        .select("*")
-        .eq("user_id", userId);
+      const [{ data: teamRows }, { data: teamPlayerRows }] = await Promise.all([
+        supabase.from("teams").select("*").eq("user_id", userId),
+        supabase.from("team_players").select("*").eq("user_id", userId),
+      ]);
 
       const combined: TeamRow[] = (teamRows || []).map((t) => ({
         id: t.id,
@@ -104,14 +94,10 @@ export default function TeamsPage() {
   }, [sportId, userId]);
 
   const refreshTeams = async (uid: string) => {
-    const { data: teamRows } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("user_id", uid);
-    const { data: teamPlayerRows } = await supabase
-      .from("team_players")
-      .select("*")
-      .eq("user_id", uid);
+    const [{ data: teamRows }, { data: teamPlayerRows }] = await Promise.all([
+      supabase.from("teams").select("*").eq("user_id", uid),
+      supabase.from("team_players").select("*").eq("user_id", uid),
+    ]);
     const combined: TeamRow[] = (teamRows || []).map((t) => ({
       id: t.id,
       name: t.name,
@@ -142,19 +128,25 @@ export default function TeamsPage() {
   const editTeam = async (team: TeamRow) => {
     if (!userId) return;
     const name = window.prompt("Team name", team.name) ?? team.name;
-    const idsStr = window.prompt(
-      `Player IDs (comma separated, choose ${teamSize} from ${players
-        .map((p) => p.id)
+    const currentNames = team.playerIds
+      .map((id) => players.find((p) => p.id === id)?.name || "")
+      .join(",");
+    const namesStr = window.prompt(
+      `Player names (comma separated, choose ${teamSize} from ${players
+        .map((p) => p.name)
         .join(", ")})`,
-      team.playerIds.join(",")
+      currentNames
     );
-    const ids = idsStr
-      ? idsStr
+    const names = namesStr
+      ? namesStr
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean)
           .slice(0, teamSize)
-      : team.playerIds;
+      : currentNames.split(",").map((s) => s.trim()).filter(Boolean);
+    const ids = names
+      .map((n) => players.find((p) => p.name === n)?.id)
+      .filter((id): id is string => Boolean(id));
     if (!name || ids.length !== teamSize) return;
 
     await supabase

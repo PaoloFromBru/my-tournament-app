@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 export default function PlayersView() {
   const [userId, setUserId] = useState<string | null>(null);
   const [sportId, setSportId] = useState<string | null>(null);
+  const [sportName, setSportName] = useState<string>("");
   const [skillsList, setSkillsList] = useState<string[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,20 +43,21 @@ export default function PlayersView() {
     getSport();
   }, [userId]);
 
-  // 3. Load sport skill list
+  // 3. Load sport info (skills and name)
   useEffect(() => {
     if (!sportId) return;
 
-    const getSkills = async () => {
+    const getSportInfo = async () => {
       const { data } = await supabase
         .from("sports")
-        .select("skills")
+        .select("skills, display_name")
         .eq("id", sportId)
         .single();
       if (data?.skills) setSkillsList(data.skills as string[]);
+      if (data?.display_name) setSportName(data.display_name as string);
     };
 
-    getSkills();
+    getSportInfo();
   }, [sportId]);
 
   // 4. Load all players and their profile for current sport
@@ -65,26 +67,17 @@ export default function PlayersView() {
     const loadPlayers = async () => {
       const { data } = await supabase
         .from("players")
-        .select("id, name")
+        .select("id, name, player_profiles(id, skills)")
         .eq("user_id", userId)
+        .eq("player_profiles.sport_id", sportId)
         .order("name");
 
-      const playersWithProfiles = await Promise.all(
-        (data || []).map(async (player: any) => {
-          const { data: profile } = await supabase
-            .from("player_profiles")
-            .select("id, skills")
-            .eq("player_id", player.id)
-            .eq("sport_id", sportId)
-            .single();
-
-          return {
-            ...player,
-            profile_id: profile?.id || null,
-            skills: profile?.skills || {},
-          };
-        })
-      );
+      const playersWithProfiles = (data || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        profile_id: p.player_profiles?.id || null,
+        skills: p.player_profiles?.skills || {},
+      }));
 
       setPlayers(sortPlayers(playersWithProfiles));
       setLoading(false);
@@ -187,7 +180,14 @@ export default function PlayersView() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-xl font-bold mb-4">Players</h1>
+      <h1 className="text-xl font-bold mb-4 flex items-baseline gap-2">
+        Players
+        {sportName && (
+          <span className="text-sm text-gray-500 font-normal">
+            {sportName} ({players.length})
+          </span>
+        )}
+      </h1>
 
       <div className="mb-6 flex gap-2">
         <input
