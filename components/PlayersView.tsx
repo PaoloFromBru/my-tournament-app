@@ -66,17 +66,17 @@ export default function PlayersView() {
 
     const loadPlayers = async () => {
       const { data } = await supabase
-        .from("players")
-        .select("id, name, player_profiles(id, skills)")
-        .eq("user_id", userId)
-        .eq("player_profiles.sport_id", sportId)
-        .order("name");
+        .from("player_profiles")
+        .select("id, skills, players(id, name)")
+        .eq("sport_id", sportId)
+        .eq("players.user_id", userId)
+        .order("name", { foreignTable: "players" });
 
-      const playersWithProfiles = (data || []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        profile_id: p.player_profiles?.id || null,
-        skills: p.player_profiles?.skills || {},
+      const playersWithProfiles = (data || []).map((row: any) => ({
+        id: row.players.id,
+        name: row.players.name,
+        profile_id: row.id,
+        skills: row.skills || {},
       }));
 
       setPlayers(sortPlayers(playersWithProfiles));
