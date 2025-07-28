@@ -2,6 +2,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
+import {
+  generateRoundRobinMatches,
+  generateKnockoutMatches,
+} from "../../../utils/scheduleMatches";
 
 interface Match {
   id: number;
@@ -29,6 +33,40 @@ export default function TournamentViewPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [debug, setDebug] = useState<string[]>([]);
+
+  const groupedMatches = matches.reduce((acc, match) => {
+    const key = match.phase || 'Uncategorized';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(match);
+    return acc;
+  }, {} as Record<string, Match[]>);
+
+  async function generateSchedule() {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+    const teamRes = await supabase
+      .from('tournament_teams')
+      .select('team_id')
+      .eq('tournament_id', id);
+    const teamIds = teamRes.data?.map((t) => t.team_id) || [];
+    const { format } = tournament || {};
+    const rawMatches =
+      format === 'round_robin'
+        ? generateRoundRobinMatches(teamIds)
+        : generateKnockoutMatches(teamIds);
+    const toInsert = rawMatches.map((m) => ({
+      tournament_id: id,
+      team_a: m.team_a,
+      team_b: m.team_b || null,
+      phase: m.phase,
+      user_id: user?.id ?? null,
+      sport_id: tournament?.sport_id,
+    }));
+    if (toInsert.length) {
+      await supabase.from('matches').insert(toInsert);
+      location.reload();
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -64,18 +102,15 @@ export default function TournamentViewPage() {
       ? "BYE"
       : teams.find((t) => t.id === tid)?.name || "Unknown team";
 
-  const phases = Array.from(new Set(matches.map((m) => m.phase))).sort(
-    (a, b) =>
-      (parseInt(a.replace(/\D/g, "")) || 0) -
-      (parseInt(b.replace(/\D/g, "")) || 0)
-  );
+  const phases = Object.keys(groupedMatches);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="flex-1 text-xl font-bold">
-          {tournament?.name || "Tournament"}
-        </h2>
+        <div className="flex-1">
+          <h2 className="text-xl font-bold">{tournament?.name || "Tournament"}</h2>
+          <p className="text-sm text-gray-500">Format: {tournament?.format}</p>
+        </div>
         <button
           onClick={() => {
             setDebug((d) => [...d, `Share button clicked for ${id}`]);
@@ -94,7 +129,15 @@ export default function TournamentViewPage() {
         </details>
       )}
       {matches.length === 0 ? (
-        <p>Results and details will appear here.</p>
+        <div>
+          <p>Results and details will appear here.</p>
+          <button
+            onClick={generateSchedule}
+            className="px-4 py-2 mt-2 bg-blue-600 text-white rounded"
+          >
+            Generate Schedule
+          </button>
+        </div>
       ) : (
         <div className="flex space-x-4 overflow-x-auto">
           {phases.map((phase) => (
@@ -103,13 +146,11 @@ export default function TournamentViewPage() {
                 {phase}
               </h3>
               <div className="flex flex-col space-y-4">
-                {matches
-                  .filter((m) => m.phase === phase)
-                  .map((m) => (
-                    <div
-                      key={m.id}
-                      className="bg-blue-100 text-black dark:bg-blue-900 dark:text-white p-2 rounded shadow"
-                    >
+                {groupedMatches[phase]?.map((m) => (
+                  <div
+                    key={m.id}
+                    className="bg-blue-100 text-black dark:bg-blue-900 dark:text-white p-2 rounded shadow"
+                  >
                       <div className="flex justify-between">
                         <span>{teamName(m.team_a)}</span>
                         <span className="font-semibold">{m.score_a ?? 0}</span>

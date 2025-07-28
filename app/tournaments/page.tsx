@@ -17,6 +17,7 @@ interface Tournament {
   id: string;
   name: string;
   teams: TournamentTeam[];
+  format: 'round_robin' | 'knockout';
 }
 
 export default function TournamentsPage() {
@@ -39,11 +40,12 @@ export default function TournamentsPage() {
 
         const { data: tourData } = await supabase
           .from("tournaments")
-          .select("id, name, tournament_teams(team_id)")
+          .select("id, name, format, tournament_teams(team_id)")
           .eq("user_id", userData.user.id);
         const converted = (tourData || []).map((t) => ({
           id: t.id,
           name: t.name,
+          format: (t as any).format as 'round_robin' | 'knockout',
           teams:
             t.tournament_teams?.map((tt: any) => ({ id: tt.team_id })) || [],
         }));
@@ -53,22 +55,29 @@ export default function TournamentsPage() {
     load();
   }, []);
 
-  const createTournamentRecord = async (name: string) => {
+  const createTournamentRecord = async (
+    name: string,
+    format: 'round_robin' | 'knockout'
+  ) => {
     const { data: inserted } = await supabase
       .from("tournaments")
-      .insert({ name, user_id: user.id })
+      .insert({ name, format, user_id: user.id })
       .select()
       .single();
     return inserted?.id;
   };
 
-  const handleSchedule = async (name: string, ids: string[]) => {
+  const handleSchedule = async (
+    name: string,
+    ids: string[],
+    format: 'round_robin' | 'knockout'
+  ) => {
     if (!user) return;
     if (!name || ids.length === 0) return;
 
     setLoading(true);
     try {
-      const insertedId = await createTournamentRecord(name);
+      const insertedId = await createTournamentRecord(name, format);
       if (insertedId) {
         await supabase.from("tournament_teams").insert(
           ids.map((teamId) => ({ tournament_id: insertedId, team_id: teamId }))
@@ -76,7 +85,7 @@ export default function TournamentsPage() {
 
         setTournaments((prev) => [
           ...prev,
-          { id: insertedId, name, teams: ids.map((id) => ({ id })) },
+          { id: insertedId, name, format, teams: ids.map((id) => ({ id })) },
         ]);
         await generateSchedule(insertedId);
       }
