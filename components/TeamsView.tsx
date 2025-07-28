@@ -4,52 +4,53 @@ import { Button } from "@/components/ui/button";
 import SelectableTagGroup from "./SelectableTagGroup";
 
 export interface Player {
-  id: number;
+  id: string;
   name: string;
-  offense: number;
-  defense: number;
+  skills: Record<string, number>;
 }
 
 export interface Team {
-  id: number;
+  id: string;
   name: string;
-  playerIds: number[];
+  playerIds: string[];
 }
 
 interface Props {
   teams: Team[];
   players: Player[];
-  onAdd: (name: string, memberIds: number[]) => void | Promise<void>;
+  teamSize: number;
+  onAdd: (name: string, memberIds: string[]) => void | Promise<void>;
   onEdit: (team: Team) => void;
-  onDelete: (id: number) => void;
-  onGenerateBalanced: () => void;
+  onDelete: (id: string) => void;
+  onSetTeams: (teams: Team[]) => void;
   onDeleteAll: () => void;
   loading?: boolean;
 }
 
-function teamOffense(ids: number[], players: Player[]) {
-  const values = ids.map((pid) => players.find((p) => p.id === pid)?.offense ?? 0);
-  return Math.max(...values);
+function averageSkill(player: Player): number {
+  const values = Object.values(player.skills || {});
+  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
-function teamDefense(ids: number[], players: Player[]) {
-  const values = ids.map((pid) => players.find((p) => p.id === pid)?.defense ?? 0);
-  return Math.max(...values);
+function teamScore(ids: string[], players: Player[]): number {
+  const values = ids.map((id) => averageSkill(players.find((p) => p.id === id)!));
+  return Math.round(values.reduce((a, b) => a + b, 0));
 }
 
 export default function TeamsView({
   teams,
   players,
+  teamSize,
   onAdd,
   onEdit,
   onDelete,
-  onGenerateBalanced,
+  onSetTeams,
   onDeleteAll,
   loading,
 }: Props) {
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
 
-  const togglePlayer = (id: number) => {
+  const togglePlayer = (id: string) => {
     setSelectedPlayers((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
     );
@@ -57,6 +58,7 @@ export default function TeamsView({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (selectedPlayers.length !== teamSize) return;
     const form = e.currentTarget;
     const name = (form.elements.namedItem("teamName") as HTMLInputElement).value;
     onAdd(name, selectedPlayers);
@@ -64,7 +66,22 @@ export default function TeamsView({
     form.reset();
   };
 
-  const playerName = (id: number) => players.find((p) => p.id === id)?.name || "";
+  const playerName = (id: string) => players.find((p) => p.id === id)?.name || "";
+
+  const generateBalancedTeams = () => {
+    const shuffled = [...players].sort(() => 0.5 - Math.random());
+    const teams: Team[] = [];
+    let teamId = 0;
+    while (shuffled.length >= teamSize) {
+      const group = shuffled.splice(0, teamSize);
+      teams.push({
+        id: `ai-${teamId++}`,
+        name: `Team ${teamId}`,
+        playerIds: group.map((p) => p.id),
+      });
+    }
+    onSetTeams(teams);
+  };
 
   return (
     <div className="relative max-w-3xl mx-auto p-6 space-y-6">
@@ -73,11 +90,12 @@ export default function TeamsView({
           <img src="/babyfoot.svg" alt="loading" className="w-20 h-20 animate-spin" />
         </div>
       )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Teams</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onGenerateBalanced}>
+          <Button variant="outline" onClick={generateBalancedTeams}>
             AI balanced teams
           </Button>
           <Button variant="destructive" onClick={onDeleteAll}>
@@ -103,13 +121,13 @@ export default function TeamsView({
             items={players}
             selectedIds={selectedPlayers}
             onToggle={togglePlayer}
-            label="Select Players"
+            label={`Select ${teamSize} Players`}
             getLabel={(p) => p.name}
             maxHeight="max-h-32"
           />
         </div>
 
-        <Button type="submit" className="mt-2">
+        <Button type="submit" className="mt-2" disabled={selectedPlayers.length !== teamSize}>
           Add Team
         </Button>
       </form>
@@ -127,7 +145,7 @@ export default function TeamsView({
                 {team.playerIds.map(playerName).join(" & ")}
               </div>
               <div className="text-xs text-gray-400 mt-1">
-                O:{teamOffense(team.playerIds, players)} D:{teamDefense(team.playerIds, players)}
+                Team Score: {teamScore(team.playerIds, players)}
               </div>
             </div>
 
