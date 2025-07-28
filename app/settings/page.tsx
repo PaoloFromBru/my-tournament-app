@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [selectedSportId, setSelectedSportId] = useState("");
   const [sportStatus, setSportStatus] = useState("");
   const [sportLoading, setSportLoading] = useState(true);
+  const [sportSkills, setSportSkills] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,6 +46,22 @@ export default function SettingsPage() {
     fetchUserProfile();
   }, [user]);
 
+  useEffect(() => {
+    if (!selectedSportId) {
+      setSportSkills([]);
+      return;
+    }
+    const loadSkills = async () => {
+      const { data } = await supabase
+        .from("sports")
+        .select("skills")
+        .eq("id", selectedSportId)
+        .single();
+      setSportSkills((data?.skills as string[]) || []);
+    };
+    loadSkills();
+  }, [selectedSportId]);
+
   const handleSportChange = async (e: ChangeEvent<HTMLSelectElement>) => {
     if (!user) return;
     const newId = e.target.value;
@@ -70,7 +87,7 @@ export default function SettingsPage() {
   };
 
   const importPlayers = async () => {
-    if (!user || !csvFile) return;
+    if (!user || !csvFile || !selectedSportId) return;
     try {
       const text = await csvFile.text();
       const rows = text.trim().split(/\r?\n/);
@@ -78,34 +95,68 @@ export default function SettingsPage() {
         setImportMessage({ ok: false, text: "File is empty" });
         return;
       }
+
       const delimiter = rows[0].includes(";") && !rows[0].includes(",") ? ";" : ",";
       const data = rows.map((line) =>
         line.split(delimiter).map((v) => v.trim())
       );
+
+      let header: string[] = [];
       if (data[0] && data[0][0].toLowerCase() === "name") {
-        data.shift();
+        header = data.shift() as string[];
       }
-      const players = data
-        .filter((row) => row.length >= 3 && row[0])
-        .map(([name, off, def]) => ({
-          name,
-          offense: Number(off),
-          defense: Number(def),
-          user_id: user.id,
-        }));
+
+      const skills = header.length ? header.slice(1) : sportSkills;
+      if (!skills.length) {
+        setImportMessage({ ok: false, text: "No skill columns found" });
+        return;
+      }
+
+      const players: { name: string; user_id: string }[] = [];
+      const profiles: Record<string, number>[] = [];
+
+      for (const row of data) {
+        if (!row[0]) continue;
+        const skillValues: Record<string, number> = {};
+        skills.forEach((skill, idx) => {
+          const val = Number(row[idx + 1]);
+          skillValues[skill] = isNaN(val) ? 0 : val;
+        });
+        players.push({ name: row[0], user_id: user.id });
+        profiles.push(skillValues);
+      }
 
       if (!players.length) {
         setImportMessage({ ok: false, text: "No valid rows found" });
         return;
       }
 
-      const { error } = await supabase.from("players").insert(players);
-      if (error) {
-        setImportMessage({ ok: false, text: error.message });
+      const { data: inserted, error } = await supabase
+        .from("players")
+        .insert(players)
+        .select("id");
+
+      if (error || !inserted) {
+        setImportMessage({ ok: false, text: error?.message || "Failed" });
+        return;
+      }
+
+      const profileRows = inserted.map((p, i) => ({
+        player_id: p.id,
+        sport_id: selectedSportId,
+        skills: profiles[i],
+      }));
+
+      const { error: profError } = await supabase
+        .from("player_profiles")
+        .insert(profileRows);
+
+      if (profError) {
+        setImportMessage({ ok: false, text: profError.message });
       } else {
         setImportMessage({
           ok: true,
-          text: `Imported ${players.length} players.`,
+          text: `Imported ${profileRows.length} players.`,
         });
         setCsvFile(null);
       }
@@ -198,8 +249,9 @@ export default function SettingsPage() {
       <section className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
         <h3 className="font-semibold">Import from CSV</h3>
         <p className="text-sm text-gray-600">
-          The file must contain <code>name, offense, defense</code> values on each
-          line. The first line may be a header and will be ignored.
+          Provide a CSV with a <code>name</code> column followed by one column for
+          each skill of the selected sport. The first line may be a header and
+          will be ignored.
         </p>
         <input
           ref={fileInputRef}
