@@ -33,8 +33,11 @@ function averageSkill(player: Player): number {
 }
 
 function teamScore(ids: string[], players: Player[]): number {
-  const values = ids.map((id) => averageSkill(players.find((p) => p.id === id)!));
-  return Math.round(values.reduce((a, b) => a + b, 0));
+  const values = ids
+    .map((id) => averageSkill(players.find((p) => p.id === id)!))
+    .filter((v) => !isNaN(v));
+  if (!values.length) return 0;
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
 export default function TeamsView({

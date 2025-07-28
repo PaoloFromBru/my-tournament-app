@@ -60,18 +60,20 @@ export default function TeamsPage() {
   useEffect(() => {
     if (!sportId || !userId) return;
     const load = async () => {
-      const { data: playerRows } = await supabase
-        .from("players")
-        .select("id, name, player_profiles(id, skills)")
-        .eq("user_id", userId)
-        .eq("player_profiles.sport_id", sportId)
-        .order("name");
+      const { data: rows } = await supabase
+        .from("player_profiles")
+        .select("skills, players(id, name)")
+        .eq("sport_id", sportId)
+        .eq("players.user_id", userId)
+        .order("players.name");
 
-      const playersWithSkills = (playerRows || []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        skills: p.player_profiles?.skills || {},
-      })) as Player[];
+      const playersWithSkills = (rows || [])
+        .filter((r: any) => r.players)
+        .map((r: any) => ({
+          id: r.players.id,
+          name: r.players.name,
+          skills: r.skills || {},
+        })) as Player[];
 
       setPlayers(playersWithSkills);
 
