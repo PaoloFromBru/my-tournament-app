@@ -53,7 +53,12 @@ export default function PlayersView() {
         .select("skills, display_name")
         .eq("id", sportId)
         .single();
-      if (data?.skills) setSkillsList(data.skills as string[]);
+      if (data?.skills) {
+        const uniqueSkills = Array.from(
+          new Set((data.skills as string[]).filter(Boolean))
+        );
+        setSkillsList(uniqueSkills);
+      }
       if (data?.display_name) setSportName(data.display_name as string);
     };
 
