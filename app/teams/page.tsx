@@ -65,7 +65,7 @@ export default function TeamsPage() {
         .select("skills, players(id, name)")
         .eq("sport_id", sportId)
         .eq("players.user_id", userId)
-        .order("players.name");
+        .order("name", { foreignTable: "players" });
 
       const playersWithSkills = (rows || [])
         .filter((r: any) => r.players)
