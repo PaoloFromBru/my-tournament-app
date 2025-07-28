@@ -17,7 +17,11 @@ interface Tournament {
 interface Props {
   tournaments: Tournament[];
   teams: Team[];
-  onSchedule: (name: string, teamIds: string[]) => void | Promise<void>;
+  onSchedule: (
+    name: string,
+    teamIds: string[],
+    format: 'round_robin' | 'knockout'
+  ) => void | Promise<void>;
   onRun: (id: string) => void;
   onView: (id: string) => void;
   onShare: (id: string) => void;
@@ -38,6 +42,7 @@ export default function TournamentsView({
   loading,
 }: Props) {
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [format, setFormat] = useState<'round_robin' | 'knockout'>('round_robin');
 
   const toggleTeam = (id: string) => {
     setSelectedTeams((prev) =>
@@ -49,7 +54,7 @@ export default function TournamentsView({
     e.preventDefault();
     const form = e.currentTarget;
     const name = (form.elements.namedItem("tournamentName") as HTMLInputElement).value;
-    onSchedule(name, selectedTeams);
+    onSchedule(name, selectedTeams, format);
     setSelectedTeams([]);
     form.reset();
   };
@@ -81,6 +86,18 @@ export default function TournamentsView({
             getLabel={(t) => t.name}
             maxHeight="max-h-32"
           />
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Tournament Format</label>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value as 'round_robin' | 'knockout')}
+              className="border rounded px-2 py-1"
+            >
+              <option value="round_robin">Round Robin</option>
+              <option value="knockout">Knockout</option>
+            </select>
+          </div>
 
           <Button type="submit" className="mt-2 bg-emerald-600 hover:bg-emerald-700">
             AI Schedule
