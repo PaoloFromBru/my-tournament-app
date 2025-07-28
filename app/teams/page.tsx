@@ -1,92 +1,117 @@
 "use client";
-import { FormEvent, useEffect, useState } from "react";
-import TeamsView from "../../components/TeamsView";
+import { useEffect, useState } from "react";
+import TeamsView, { Team } from "../../components/TeamsView";
 import { supabase } from "../../lib/supabaseBrowser";
 
 interface Player {
-  id: number;
+  id: string;
   name: string;
-  offense: number;
-  defense: number;
-  user_id: string;
+  skills: Record<string, number>;
 }
 
 interface TeamRow {
-  id: number;
+  id: string;
   name: string;
-  playerIds: number[];
+  playerIds: string[];
 }
 
 export default function TeamsPage() {
-  const [user, setUser] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [sportId, setSportId] = useState<string | null>(null);
+  const [teamSize, setTeamSize] = useState(2);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Load current user
   useEffect(() => {
-    const load = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      setUser(userData.user);
-      if (userData.user) {
-        const { data: playerData } = await supabase
-          .from("players")
-          .select("*")
-          .eq("user_id", userData.user.id);
-        setPlayers(playerData || []);
-
-        const { data: teamRows } = await supabase
-          .from("teams")
-          .select("*")
-          .eq("user_id", userData.user.id);
-
-        const { data: teamPlayerRows } = await supabase
-          .from("team_players")
-          .select("*")
-          .eq("user_id", userData.user.id);
-
-        const combined: TeamRow[] = (teamRows || []).map((t) => ({
-          id: t.id,
-          name: t.name,
-          playerIds: (teamPlayerRows || [])
-            .filter((tp) => tp.team_id === t.id)
-            .map((tp) => tp.player_id),
-        }));
-
-        setTeams(combined);
-      }
-    };
-    load();
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
+  // Load preferred sport
+  useEffect(() => {
+    if (!userId) return;
+    const fetchSport = async () => {
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("sport_id")
+        .eq("user_id", userId)
+        .single();
+      if (data?.sport_id) setSportId(data.sport_id as string);
+    };
+    fetchSport();
+  }, [userId]);
 
-  const addTeam = async (name: string, memberIds: number[]) => {
-    if (!user) return;
-    if (!name || memberIds.length !== 2) return;
+  // Load sport info (team size)
+  useEffect(() => {
+    if (!sportId) return;
+    const getSportInfo = async () => {
+      const { data } = await supabase
+        .from("sports")
+        .select("team_size")
+        .eq("id", sportId)
+        .single();
+      if (data?.team_size) setTeamSize(data.team_size as number);
+    };
+    getSportInfo();
+  }, [sportId]);
 
-    const { data: inserted } = await supabase
-      .from("teams")
-      .insert({ name, user_id: user.id })
-      .select()
-      .single();
+  // Load players and teams
+  useEffect(() => {
+    if (!sportId || !userId) return;
+    const load = async () => {
+      const { data: playerRows } = await supabase
+        .from("players")
+        .select("id, name")
+        .eq("user_id", userId)
+        .order("name");
 
-    const teamId = inserted?.id;
-
-    if (teamId) {
-      await supabase.from("team_players").insert(
-        memberIds.map((pid) => ({ team_id: teamId, player_id: pid, user_id: user.id })),
+      const playersWithSkills = await Promise.all(
+        (playerRows || []).map(async (p: any) => {
+          const { data: profile } = await supabase
+            .from("player_profiles")
+            .select("skills")
+            .eq("player_id", p.id)
+            .eq("sport_id", sportId)
+            .single();
+          return { ...p, skills: profile?.skills || {} } as Player;
+        })
       );
-    }
 
+      setPlayers(playersWithSkills);
+
+      const { data: teamRows } = await supabase
+        .from("teams")
+        .select("*")
+        .eq("user_id", userId);
+
+      const { data: teamPlayerRows } = await supabase
+        .from("team_players")
+        .select("*")
+        .eq("user_id", userId);
+
+      const combined: TeamRow[] = (teamRows || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        playerIds: (teamPlayerRows || [])
+          .filter((tp) => tp.team_id === t.id)
+          .map((tp) => tp.player_id),
+      }));
+
+      setTeams(combined);
+    };
+    load();
+  }, [sportId, userId]);
+
+  const refreshTeams = async (uid: string) => {
     const { data: teamRows } = await supabase
       .from("teams")
       .select("*")
-      .eq("user_id", user.id);
-
+      .eq("user_id", uid);
     const { data: teamPlayerRows } = await supabase
       .from("team_players")
       .select("*")
-      .eq("user_id", user.id);
-
+      .eq("user_id", uid);
     const combined: TeamRow[] = (teamRows || []).map((t) => ({
       id: t.id,
       name: t.name,
@@ -94,185 +119,106 @@ export default function TeamsPage() {
         .filter((tp) => tp.team_id === t.id)
         .map((tp) => tp.player_id),
     }));
-
     setTeams(combined);
   };
 
+  const addTeam = async (name: string, memberIds: string[]) => {
+    if (!userId) return;
+    if (!name || memberIds.length !== teamSize) return;
+    const { data: inserted } = await supabase
+      .from("teams")
+      .insert({ name, user_id: userId })
+      .select()
+      .single();
+    const teamId = inserted?.id;
+    if (teamId) {
+      await supabase.from("team_players").insert(
+        memberIds.map((pid) => ({ team_id: teamId, player_id: pid, user_id: userId }))
+      );
+    }
+    await refreshTeams(userId);
+  };
+
   const editTeam = async (team: TeamRow) => {
-    if (!user) return;
+    if (!userId) return;
     const name = window.prompt("Team name", team.name) ?? team.name;
     const idsStr = window.prompt(
-      `Player IDs (comma separated, choose two from ${players
+      `Player IDs (comma separated, choose ${teamSize} from ${players
         .map((p) => p.id)
         .join(", ")})`,
-      team.playerIds.join(","),
+      team.playerIds.join(",")
     );
     const ids = idsStr
       ? idsStr
           .split(",")
-          .map((s) => Number(s.trim()))
-          .filter((n) => !isNaN(n))
-          .slice(0, 2)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, teamSize)
       : team.playerIds;
-    if (!name || ids.length !== 2) return;
+    if (!name || ids.length !== teamSize) return;
 
     await supabase
       .from("teams")
       .update({ name })
       .eq("id", team.id)
-      .eq("user_id", user.id);
-
+      .eq("user_id", userId);
     await supabase
       .from("team_players")
       .delete()
       .eq("team_id", team.id)
-      .eq("user_id", user.id);
-
+      .eq("user_id", userId);
     await supabase.from("team_players").insert(
-      ids.map((pid) => ({ team_id: team.id, player_id: pid, user_id: user.id })),
+      ids.map((pid) => ({ team_id: team.id, player_id: pid, user_id: userId }))
     );
-
-    const { data: teamRows } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("user_id", user.id);
-    const { data: teamPlayerRows } = await supabase
-      .from("team_players")
-      .select("*")
-      .eq("user_id", user.id);
-    const combined: TeamRow[] = (teamRows || []).map((t) => ({
-      id: t.id,
-      name: t.name,
-      playerIds: (teamPlayerRows || [])
-        .filter((tp) => tp.team_id === t.id)
-        .map((tp) => tp.player_id),
-    }));
-
-    setTeams(combined);
+    await refreshTeams(userId);
   };
 
-  const deleteTeam = async (id: number) => {
-    if (!user) return;
+  const deleteTeam = async (id: string) => {
+    if (!userId) return;
     if (!confirm("Delete this team?")) return;
-
-    await supabase
-      .from("team_players")
-      .delete()
-      .eq("team_id", id)
-      .eq("user_id", user.id);
-
-    await supabase
-      .from("matches")
-      .update({ team_a: null })
-      .eq("team_a", id)
-      .eq("user_id", user.id);
-
-    await supabase
-      .from("matches")
-      .update({ team_b: null })
-      .eq("team_b", id)
-      .eq("user_id", user.id);
-
-    await supabase
-      .from("matches")
-      .update({ winner: null })
-      .eq("winner", id)
-      .eq("user_id", user.id);
-
-    await supabase.from("teams").delete().eq("id", id).eq("user_id", user.id);
-
+    await supabase.from("team_players").delete().eq("team_id", id).eq("user_id", userId);
+    await supabase.from("matches").update({ team_a: null }).eq("team_a", id).eq("user_id", userId);
+    await supabase.from("matches").update({ team_b: null }).eq("team_b", id).eq("user_id", userId);
+    await supabase.from("matches").update({ winner: null }).eq("winner", id).eq("user_id", userId);
+    await supabase.from("teams").delete().eq("id", id).eq("user_id", userId);
     setTeams((prev) => prev.filter((t) => t.id !== id));
   };
 
   const deleteAllTeams = async () => {
-    if (!user) return;
+    if (!userId) return;
     if (teams.length === 0) return;
     if (!confirm("Delete ALL teams?")) return;
     setLoading(true);
     try {
       const ids = teams.map((t) => t.id);
-      await supabase
-        .from("team_players")
-        .delete()
-        .in("team_id", ids)
-        .eq("user_id", user.id);
-
-      await supabase
-        .from("matches")
-        .update({ team_a: null })
-        .in("team_a", ids)
-        .eq("user_id", user.id);
-
-      await supabase
-        .from("matches")
-        .update({ team_b: null })
-        .in("team_b", ids)
-        .eq("user_id", user.id);
-
-      await supabase
-        .from("matches")
-        .update({ winner: null })
-        .in("winner", ids)
-        .eq("user_id", user.id);
-
-      await supabase
-        .from("teams")
-        .delete()
-        .in("id", ids)
-        .eq("user_id", user.id);
-
+      await supabase.from("team_players").delete().in("team_id", ids).eq("user_id", userId);
+      await supabase.from("matches").update({ team_a: null }).in("team_a", ids).eq("user_id", userId);
+      await supabase.from("matches").update({ team_b: null }).in("team_b", ids).eq("user_id", userId);
+      await supabase.from("matches").update({ winner: null }).in("winner", ids).eq("user_id", userId);
+      await supabase.from("teams").delete().in("id", ids).eq("user_id", userId);
       setTeams([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateBalancedTeams = async () => {
-    if (!user) return;
+  const setGeneratedTeams = async (newTeams: Team[]) => {
+    if (!userId) return;
     setLoading(true);
-    const res = await fetch("/api/balanced-teams", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ players }),
-    });
-    if (!res.ok) {
-      setLoading(false);
-      return;
-    }
-    const { teams: newTeams } = await res.json();
-    for (const t of newTeams || []) {
+    for (const t of newTeams) {
       const { data: inserted } = await supabase
         .from("teams")
-        .insert({ name: t.name, user_id: user.id })
+        .insert({ name: t.name, user_id: userId })
         .select()
         .single();
       const teamId = inserted?.id;
       if (teamId) {
         await supabase.from("team_players").insert(
-          t.playerIds.map((pid: number) => ({
-            team_id: teamId,
-            player_id: pid,
-            user_id: user.id,
-          })),
+          t.playerIds.map((pid) => ({ team_id: teamId, player_id: pid, user_id: userId }))
         );
       }
     }
-    const { data: teamRows } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("user_id", user.id);
-    const { data: teamPlayerRows } = await supabase
-      .from("team_players")
-      .select("*")
-      .eq("user_id", user.id);
-    const combined: TeamRow[] = (teamRows || []).map((t) => ({
-      id: t.id,
-      name: t.name,
-      playerIds: (teamPlayerRows || [])
-        .filter((tp) => tp.team_id === t.id)
-        .map((tp) => tp.player_id),
-    }));
-    setTeams(combined);
+    await refreshTeams(userId);
     setLoading(false);
   };
 
@@ -280,11 +226,12 @@ export default function TeamsPage() {
     <TeamsView
       teams={teams}
       players={players}
+      teamSize={teamSize}
       onAdd={addTeam}
       onEdit={editTeam}
       onDelete={deleteTeam}
+      onSetTeams={setGeneratedTeams}
       onDeleteAll={deleteAllTeams}
-      onGenerateBalanced={generateBalancedTeams}
       loading={loading}
     />
   );
