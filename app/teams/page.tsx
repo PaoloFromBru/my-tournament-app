@@ -142,19 +142,25 @@ export default function TeamsPage() {
   const editTeam = async (team: TeamRow) => {
     if (!userId) return;
     const name = window.prompt("Team name", team.name) ?? team.name;
-    const idsStr = window.prompt(
-      `Player IDs (comma separated, choose ${teamSize} from ${players
-        .map((p) => p.id)
+    const currentNames = team.playerIds
+      .map((id) => players.find((p) => p.id === id)?.name || "")
+      .join(",");
+    const namesStr = window.prompt(
+      `Player names (comma separated, choose ${teamSize} from ${players
+        .map((p) => p.name)
         .join(", ")})`,
-      team.playerIds.join(",")
+      currentNames
     );
-    const ids = idsStr
-      ? idsStr
+    const names = namesStr
+      ? namesStr
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean)
           .slice(0, teamSize)
-      : team.playerIds;
+      : currentNames.split(",").map((s) => s.trim()).filter(Boolean);
+    const ids = names
+      .map((n) => players.find((p) => p.name === n)?.id)
+      .filter((id): id is string => Boolean(id));
     if (!name || ids.length !== teamSize) return;
 
     await supabase
