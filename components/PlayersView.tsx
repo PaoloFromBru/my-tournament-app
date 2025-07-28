@@ -67,26 +67,17 @@ export default function PlayersView() {
     const loadPlayers = async () => {
       const { data } = await supabase
         .from("players")
-        .select("id, name")
+        .select("id, name, player_profiles(id, skills)")
         .eq("user_id", userId)
+        .eq("player_profiles.sport_id", sportId)
         .order("name");
 
-      const playersWithProfiles = await Promise.all(
-        (data || []).map(async (player: any) => {
-          const { data: profile } = await supabase
-            .from("player_profiles")
-            .select("id, skills")
-            .eq("player_id", player.id)
-            .eq("sport_id", sportId)
-            .single();
-
-          return {
-            ...player,
-            profile_id: profile?.id || null,
-            skills: profile?.skills || {},
-          };
-        })
-      );
+      const playersWithProfiles = (data || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        profile_id: p.player_profiles?.id || null,
+        skills: p.player_profiles?.skills || {},
+      }));
 
       setPlayers(sortPlayers(playersWithProfiles));
       setLoading(false);
