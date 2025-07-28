@@ -70,7 +70,7 @@ export default function PlayersView() {
         .select("id, skills, players(id, name)")
         .eq("sport_id", sportId)
         .eq("players.user_id", userId)
-        .order("players.name");
+        .order("name", { foreignTable: "players" });
 
       const playersWithProfiles = (data || []).map((row: any) => ({
         id: row.players.id,
