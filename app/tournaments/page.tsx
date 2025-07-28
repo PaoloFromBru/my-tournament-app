@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import TournamentsView from "../../components/TournamentsView";
 import { supabase } from "../../lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
+import {
+  generateRoundRobinMatches,
+  generateKnockoutMatches,
+} from "../../utils/scheduleMatches";
 
 interface Team {
   id: string;
@@ -87,7 +91,7 @@ export default function TournamentsPage() {
           ...prev,
           { id: insertedId, name, format, teams: ids.map((id) => ({ id })) },
         ]);
-        await generateSchedule(insertedId);
+        await generateSchedule(insertedId, format);
       }
     } finally {
       setLoading(false);
@@ -142,7 +146,10 @@ export default function TournamentsPage() {
     }
   };
 
-  async function generateSchedule(id: string) {
+  async function generateSchedule(
+    id: string,
+    format: 'round_robin' | 'knockout'
+  ) {
     const { data: userData } = await supabase.auth.getUser();
     const currentUser = userData.user;
     if (!currentUser) {
@@ -163,40 +170,44 @@ export default function TournamentsPage() {
       return;
     }
 
-    const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
-    let schedule: { matches: { round: number; teamA: number | null; teamB: number | null; winner?: number | null }[] } & {
-      debug?: string[];
-    } = { matches: [] };
+    let schedule: { team_a: string | number; team_b: string | number | null; phase: string; winner?: string | number | null }[] = [];
 
-    if (isPower(tms.length)) {
-      const pairs = [] as { round: number; teamA: number; teamB: number }[];
-      for (let i = 0; i < tms.length; i += 2) {
-        if (tms[i + 1]) {
-          pairs.push({ round: 1, teamA: tms[i].id, teamB: tms[i + 1].id });
-        }
-      }
-      schedule.matches = pairs;
+    if (format === 'round_robin') {
+      const pairs = generateRoundRobinMatches(tms.map((t) => String(t.id)));
+      schedule = pairs.map((p) => ({ team_a: p.team_a, team_b: p.team_b, phase: p.phase }));
     } else {
-      const res = await fetch("/api/best-schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teams: tms }),
-      });
-      const json = await res.json();
-      if (res.ok) {
-        schedule = json;
-        schedule.matches = schedule.matches
-          .map((m: any) => {
-            const teamA = m.teamA === "bye" || m.teamA === "null" ? null : m.teamA;
-            const teamB = m.teamB === "bye" || m.teamB === "null" ? null : m.teamB;
-            let winner = null as number | null;
-            if (teamA && !teamB) winner = teamA;
-            if (teamB && !teamA) winner = teamB;
-            return { round: m.round, teamA, teamB, winner };
-          })
-          .filter((m: any) => m.round === 1);
+      const isPower = (n: number) => (n & (n - 1)) === 0 && n !== 0;
+      if (isPower(tms.length)) {
+        const pairs = [] as { team_a: string | number; team_b: string | number; phase: string; winner?: string | number | null }[];
+        for (let i = 0; i < tms.length; i += 2) {
+          if (tms[i + 1]) {
+            pairs.push({ team_a: tms[i].id, team_b: tms[i + 1].id, phase: 'round1' });
+          }
+        }
+        schedule = pairs;
       } else {
-        alert(json.error || "AI schedule failed");
+        const res = await fetch('/api/best-schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teams: tms }),
+        });
+        const json = await res.json();
+        if (res.ok) {
+          schedule = (json.matches || []).map((m: any) => {
+            const team_a = m.teamA === 'bye' || m.teamA === 'null' ? null : m.teamA;
+            const team_b = m.teamB === 'bye' || m.teamB === 'null' ? null : m.teamB;
+            const entry: { team_a: number | null; team_b: number | null; phase: string; winner?: number | null } = {
+              team_a,
+              team_b,
+              phase: `round${m.round}`,
+            };
+            if (team_a && !team_b) entry.winner = team_a;
+            if (team_b && !team_a) entry.winner = team_b;
+            return entry;
+          }).filter((m: any) => m.phase === 'round1');
+        } else {
+          alert(json.error || 'AI schedule failed');
+        }
       }
     }
 
@@ -206,13 +217,13 @@ export default function TournamentsPage() {
       .eq("tournament_id", id)
       .eq("user_id", currentUser.id);
 
-    if (schedule.matches.length) {
+    if (schedule.length) {
       await supabase.from("matches").insert(
-        schedule.matches.map((m) => ({
-          team_a: m.teamA,
-          team_b: m.teamB,
-          winner: m.winner,
-          phase: `round${m.round}`,
+        schedule.map((m) => ({
+          team_a: m.team_a,
+          team_b: m.team_b,
+          winner: m.winner ?? null,
+          phase: m.phase,
           scheduled_at: null,
           tournament_id: id,
           user_id: currentUser.id,
