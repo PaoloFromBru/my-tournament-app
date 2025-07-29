@@ -27,6 +27,7 @@ interface Tournament {
 export default function TournamentsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [sportId, setSportId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,10 +37,19 @@ export default function TournamentsPage() {
       const { data: userData } = await supabase.auth.getUser();
       setUser(userData.user);
       if (userData.user) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("sport_id")
+          .eq("user_id", userData.user.id)
+          .single();
+        const sid = profile?.sport_id as string | null;
+        setSportId(sid);
+
         const { data: teamsData } = await supabase
           .from("teams")
           .select("id, name")
-          .eq("user_id", userData.user.id);
+          .eq("user_id", userData.user.id)
+          .eq("sport_id", sid);
         setTeams(teamsData || []);
 
         const { data: tourData } = await supabase

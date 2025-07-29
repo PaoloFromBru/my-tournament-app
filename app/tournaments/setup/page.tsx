@@ -9,6 +9,7 @@ interface Team {
 
 export default function TournamentSetupPage() {
   const [user, setUser] = useState<any>(null);
+  const [sportId, setSportId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [name, setName] = useState("");
@@ -20,10 +21,19 @@ export default function TournamentSetupPage() {
       const { data: userData } = await supabase.auth.getUser();
       setUser(userData.user);
       if (userData.user) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("sport_id")
+          .eq("user_id", userData.user.id)
+          .single();
+        const sid = profile?.sport_id as string | null;
+        setSportId(sid);
+
         const { data: teamsData } = await supabase
           .from("teams")
           .select("id, name")
-          .eq("user_id", userData.user.id);
+          .eq("user_id", userData.user.id)
+          .eq("sport_id", sid);
         setTeams(teamsData || []);
       }
     };
