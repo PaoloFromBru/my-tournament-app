@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { Button } from "./ui/button";
+import { useDonationPrompt } from "@/hooks/useDonationPrompt";
+import DonationModal from "./DonationModal";
 
 export default function PlayersView() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -12,6 +14,8 @@ export default function PlayersView() {
   const [loading, setLoading] = useState(true);
   const [newPlayerName, setNewPlayerName] = useState<string>("");
   const [filter, setFilter] = useState<string>("");
+
+  const shouldPrompt = useDonationPrompt(players.length);
 
   const sortPlayers = (list: any[]) =>
     list.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -186,7 +190,9 @@ export default function PlayersView() {
   if (loading) return <p className="p-4">Loading players...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <>
+      {shouldPrompt && <DonationModal open={true} onClose={() => {}} />}
+      <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-xl font-bold mb-4 flex items-baseline gap-2">
         Players
         {sportName && (
@@ -262,6 +268,7 @@ export default function PlayersView() {
             ))}
           </div>
         ))}
-    </div>
+      </div>
+    </>
   );
 }
