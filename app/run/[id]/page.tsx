@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
@@ -30,6 +30,7 @@ export default function TournamentRunPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
+  const [readyForKnockout, setReadyForKnockout] = useState(false);
   // ensures initial match generation only happens once
   const initialized = useRef(false);
 
@@ -119,6 +120,34 @@ export default function TournamentRunPage() {
     tid === null || tid === undefined
       ? "BYE"
       : teams.find((t) => String(t.id) === String(tid))?.name || "Unknown team";
+
+  const rankings = useMemo(() => {
+    const rrMatches = matches.filter((m) => !m.phase.startsWith('round'));
+    const stats: Record<string, { wins: number; diff: number }> = {};
+    teams.forEach((t) => {
+      stats[String(t.id)] = { wins: 0, diff: 0 };
+    });
+    rrMatches.forEach((m) => {
+      if (m.winner !== null && m.winner !== undefined) {
+        stats[String(m.winner)].wins += 1;
+      }
+      if (m.score_a != null && m.score_b != null) {
+        stats[String(m.team_a)].diff += (m.score_a ?? 0) - (m.score_b ?? 0);
+        stats[String(m.team_b)].diff += (m.score_b ?? 0) - (m.score_a ?? 0);
+      }
+    });
+    return teams
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        wins: stats[String(t.id)].wins,
+        diff: stats[String(t.id)].diff,
+      }))
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.diff - a.diff;
+      });
+  }, [matches, teams]);
 
   const triggerConfetti = () => {
     const container = document.createElement("div");
@@ -211,6 +240,37 @@ export default function TournamentRunPage() {
     }
   };
 
+  const generateKnockout = async () => {
+    const rankedIds = rankings.map((r) => Number(r.id));
+    const count = rankedIds.length >= 4 ? 4 : 2;
+    const top = rankedIds.slice(0, count);
+    const pairings: { team_a: number; team_b: number }[] = [];
+    if (top.length === 4) {
+      pairings.push({ team_a: top[0], team_b: top[3] });
+      pairings.push({ team_a: top[1], team_b: top[2] });
+    } else if (top.length === 2) {
+      pairings.push({ team_a: top[0], team_b: top[1] });
+    } else {
+      return;
+    }
+    await supabase.from('matches').insert(
+      pairings.map((p) => ({
+        team_a: p.team_a,
+        team_b: p.team_b,
+        phase: 'round1',
+        scheduled_at: null,
+        tournament_id: id,
+        user_id: user?.id ?? null,
+      }))
+    );
+    const { data: newMatches } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('tournament_id', id);
+    setMatches(newMatches || []);
+    setReadyForKnockout(false);
+  };
+
   const saveResult = async (m: Match) => {
     const sc = scores[String(m.id)] || { a: 0, b: 0 };
     const winner = sc.a === sc.b ? null : sc.a > sc.b ? m.team_a : m.team_b;
@@ -269,6 +329,8 @@ export default function TournamentRunPage() {
       (parseInt(a.replace(/\D/g, "")) || 0) -
       (parseInt(b.replace(/\D/g, "")) || 0)
   );
+  const rrPhases = phases.filter((p) => !p.startsWith('round'));
+  const koPhases = phases.filter((p) => p.startsWith('round'));
 
   const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
   const currentRound = Math.max(...phaseNums, 1);
@@ -295,127 +357,136 @@ export default function TournamentRunPage() {
   }, [matches, celebrated]);
 
   useEffect(() => {
-    const maybeGenerateKnockout = async () => {
-      if (!tournament || tournament.format !== 'round_robin') return;
-      if (matches.length === 0) return;
-      const rrMatches = matches.filter((m) => !m.phase.startsWith('round'));
-      const knockoutExists = matches.some((m) => m.phase.startsWith('round'));
-      if (knockoutExists) return;
-      if (rrMatches.length === 0) return;
-      const allDone = rrMatches.every((m) => m.winner);
-      if (!allDone) return;
-
-      const stats: Record<string, { wins: number; diff: number }> = {};
-      teams.forEach((t) => {
-        stats[String(t.id)] = { wins: 0, diff: 0 };
-      });
-      rrMatches.forEach((m) => {
-        if (m.winner !== null) {
-          stats[String(m.winner)].wins += 1;
-        }
-        if (m.score_a != null && m.score_b != null) {
-          stats[String(m.team_a)].diff += (m.score_a ?? 0) - (m.score_b ?? 0);
-          stats[String(m.team_b)].diff += (m.score_b ?? 0) - (m.score_a ?? 0);
-        }
-      });
-      const ranked = Object.entries(stats)
-        .sort((a, b) => {
-          if (b[1].wins !== a[1].wins) return b[1].wins - a[1].wins;
-          return b[1].diff - a[1].diff;
-        })
-        .map(([id]) => Number(id));
-      const count = ranked.length >= 4 ? 4 : 2;
-      const top = ranked.slice(0, count);
-      const pairings: { team_a: number; team_b: number }[] = [];
-      if (top.length === 4) {
-        pairings.push({ team_a: top[0], team_b: top[3] });
-        pairings.push({ team_a: top[1], team_b: top[2] });
-      } else if (top.length === 2) {
-        pairings.push({ team_a: top[0], team_b: top[1] });
-      } else {
-        return;
-      }
-      await supabase.from('matches').insert(
-        pairings.map((p) => ({
-          team_a: p.team_a,
-          team_b: p.team_b,
-          phase: 'round1',
-          scheduled_at: null,
-          tournament_id: id,
-          user_id: user?.id ?? null,
-        }))
-      );
-      const { data: newMatches } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('tournament_id', id);
-      setMatches(newMatches || []);
-    };
-    maybeGenerateKnockout();
-  }, [matches, tournament, teams, id, user]);
+    if (!tournament || tournament.format !== 'round_robin') return;
+    if (matches.length === 0) return;
+    const rrMatches = matches.filter((m) => !m.phase.startsWith('round'));
+    const knockoutExists = matches.some((m) => m.phase.startsWith('round'));
+    if (knockoutExists) {
+      setReadyForKnockout(false);
+      return;
+    }
+    if (rrMatches.length === 0) return;
+    const allDone = rrMatches.every((m) => m.winner);
+    setReadyForKnockout(allDone);
+  }, [matches, tournament]);
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">{tournament?.name || "Tournament"} Run</h2>
-      <div className="flex space-x-4 overflow-x-auto">
-        {phases.map((phase) => (
-          <div key={phase} className="min-w-[220px]">
-            <h3 className="text-center mb-2 font-semibold capitalize">{phase}</h3>
-            <div className="flex flex-col space-y-4">
-              {matches
-                .filter((m) => m.phase === phase)
-                .map((m) => (
-                  <div
-                    key={m.id}
-                    className="bg-blue-100 text-black dark:bg-blue-900 dark:text-white p-2 rounded shadow"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>{teamName(m.team_a)}</span>
-                      <input
-                        type="number"
-                        className="w-12 border"
-                        value={scores[String(m.id)]?.a ?? 0}
-                        onChange={(e) =>
-                          updateScore(
-                            m,
-                            "a",
-                            Number(e.target.value)
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span>{teamName(m.team_b)}</span>
-                      <input
-                        type="number"
-                        className="w-12 border"
-                        value={scores[String(m.id)]?.b ?? 0}
-                        onChange={(e) =>
-                          updateScore(
-                            m,
-                            "b",
-                            Number(e.target.value)
-                          )
-                        }
-                      />
-                    </div>
-                    <button
-                      className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white py-0.5 rounded"
-                      onClick={() => saveResult(m)}
+      <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 overflow-x-auto">
+        <div className="flex space-x-4">
+          {rrPhases.map((phase) => (
+            <div key={phase} className="min-w-[220px]">
+              <h3 className="text-center mb-2 font-semibold capitalize">{phase}</h3>
+              <div className="flex flex-col space-y-4">
+                {matches
+                  .filter((m) => m.phase === phase)
+                  .map((m) => (
+                    <div
+                      key={m.id}
+                      className="bg-blue-100 text-black dark:bg-blue-900 dark:text-white p-2 rounded shadow"
                     >
-                      Save Result
-                    </button>
-                    {m.winner && (
-                      <p className="text-center mt-1 text-green-700 dark:text-green-300 font-medium">
-                        Winner: {teamName(m.winner)}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                      <div className="flex justify-between items-center">
+                        <span>{teamName(m.team_a)}</span>
+                        <input
+                          type="number"
+                          className="w-12 border"
+                          value={scores[String(m.id)]?.a ?? 0}
+                          onChange={(e) =>
+                            updateScore(
+                              m,
+                              "a",
+                              Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span>{teamName(m.team_b)}</span>
+                        <input
+                          type="number"
+                          className="w-12 border"
+                          value={scores[String(m.id)]?.b ?? 0}
+                          onChange={(e) =>
+                            updateScore(
+                              m,
+                              "b",
+                              Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+                      <button
+                        className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white py-0.5 rounded"
+                        onClick={() => saveResult(m)}
+                      >
+                        Save Result
+                      </button>
+                      {m.winner && (
+                        <p className="text-center mt-1 text-green-700 dark:text-green-300 font-medium">
+                          Winner: {teamName(m.winner)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
             </div>
+          ))}
+        </div>
+        {koPhases.length > 0 && (
+          <div className="flex space-x-4 md:ml-4 border-t pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-4">
+            {koPhases.map((phase) => (
+              <div key={phase} className="min-w-[220px]">
+                <h3 className="text-center mb-2 font-semibold capitalize">{phase}</h3>
+                <div className="flex flex-col space-y-4">
+                  {matches
+                    .filter((m) => m.phase === phase)
+                    .map((m) => (
+                      <div
+                        key={m.id}
+                        className="bg-red-100 text-black dark:bg-red-900 dark:text-white p-2 rounded shadow"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span>{teamName(m.team_a)}</span>
+                          <span className="font-semibold">{m.score_a ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span>{teamName(m.team_b)}</span>
+                          <span className="font-semibold">{m.score_b ?? 0}</span>
+                        </div>
+                        {m.winner && (
+                          <p className="text-center mt-1 text-green-700 dark:text-green-300 font-medium">
+                            Winner: {teamName(m.winner)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
+      {readyForKnockout && (
+        <div className="space-y-2">
+          <div className="border p-2 rounded">
+            <h3 className="font-semibold mb-1">Ranking</h3>
+            <ol className="list-decimal pl-4 space-y-1">
+              {rankings.map((r) => (
+                <li key={r.id}>
+                  {r.name} (W: {r.wins}, Diff: {r.diff})
+                </li>
+              ))}
+            </ol>
+          </div>
+          <Button
+            className="bg-purple-500 hover:bg-purple-600"
+            onClick={generateKnockout}
+          >
+            Next Phase
+          </Button>
+        </div>
+      )}
       {canAdvance && (
         <Button className="bg-blue-500 hover:bg-blue-600" onClick={nextRound}>
           Next Round
