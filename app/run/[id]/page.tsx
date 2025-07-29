@@ -241,23 +241,29 @@ export default function TournamentRunPage() {
   };
 
   const generateKnockout = async () => {
-    const rankedIds = rankings.map((r) => Number(r.id));
-    const count = rankedIds.length >= 4 ? 4 : 2;
-    const top = rankedIds.slice(0, count);
+    const knockoutCount = (total: number) => {
+      let count = 2;
+      while (total > count * 2 + 1) {
+        count *= 2;
+      }
+      return count;
+    };
+
+    const count = Math.min(knockoutCount(teams.length), rankings.length);
+    const topIds = rankings.slice(0, count).map((r) => Number(r.id));
     const pairings: { team_a: number; team_b: number }[] = [];
-    if (top.length === 4) {
-      pairings.push({ team_a: top[0], team_b: top[3] });
-      pairings.push({ team_a: top[1], team_b: top[2] });
-    } else if (top.length === 2) {
-      pairings.push({ team_a: top[0], team_b: top[1] });
-    } else {
-      return;
+    for (let i = 0; i < topIds.length / 2; i++) {
+      pairings.push({
+        team_a: topIds[i],
+        team_b: topIds[topIds.length - 1 - i],
+      });
     }
-    await supabase.from('matches').insert(
+    if (pairings.length === 0) return;
+    await supabase.from("matches").insert(
       pairings.map((p) => ({
         team_a: p.team_a,
         team_b: p.team_b,
-        phase: 'round1',
+        phase: "round1",
         scheduled_at: null,
         tournament_id: id,
         user_id: user?.id ?? null,
