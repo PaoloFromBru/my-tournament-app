@@ -356,7 +356,11 @@ export default function TournamentRunPage() {
     const finalMatches = matches.filter(
       (m) => parseInt(m.phase.replace(/\D/g, "")) === maxRound
     );
-    if (finalMatches.length === 1 && finalMatches[0].winner) {
+    if (
+      finalMatches.length === 1 &&
+      finalMatches[0].winner &&
+      finalMatches[0].phase.startsWith('round')
+    ) {
       triggerConfetti();
       setCelebrated(true);
     }
@@ -454,12 +458,40 @@ export default function TournamentRunPage() {
                       >
                         <div className="flex justify-between items-center">
                           <span>{teamName(m.team_a)}</span>
-                          <span className="font-semibold">{m.score_a ?? 0}</span>
+                          <input
+                            type="number"
+                            className="w-12 border"
+                            value={scores[String(m.id)]?.a ?? 0}
+                            onChange={(e) =>
+                              updateScore(
+                                m,
+                                "a",
+                                Number(e.target.value)
+                              )
+                            }
+                          />
                         </div>
                         <div className="flex justify-between items-center mt-1">
                           <span>{teamName(m.team_b)}</span>
-                          <span className="font-semibold">{m.score_b ?? 0}</span>
+                          <input
+                            type="number"
+                            className="w-12 border"
+                            value={scores[String(m.id)]?.b ?? 0}
+                            onChange={(e) =>
+                              updateScore(
+                                m,
+                                "b",
+                                Number(e.target.value)
+                              )
+                            }
+                          />
                         </div>
+                        <button
+                          className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white py-0.5 rounded"
+                          onClick={() => saveResult(m)}
+                        >
+                          Save Result
+                        </button>
                         {m.winner && (
                           <p className="text-center mt-1 text-green-700 dark:text-green-300 font-medium">
                             Winner: {teamName(m.winner)}
