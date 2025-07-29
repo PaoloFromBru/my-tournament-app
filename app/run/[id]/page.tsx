@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
 import { generateNextRoundMatches } from "../../../utils/scheduleMatches";
+import { logDebug } from "../../../utils/logger";
 
 interface Match {
   id: string | number;
@@ -177,7 +178,7 @@ export default function TournamentRunPage() {
     const winners = currentMatches
       .map((m) => m.winner)
       .filter((w): w is number => Boolean(w));
-    console.log('nextRound winners', winners);
+    logDebug('nextRound winners', winners);
     if (winners.length !== currentMatches.length) return;
 
     if (winners.length === 1) {
@@ -186,7 +187,7 @@ export default function TournamentRunPage() {
     }
 
     const pairings = generateNextRoundMatches(winners);
-    console.log('nextRound pairings', pairings);
+    logDebug('nextRound pairings', pairings);
     const nextRoundNum = currentRound + 1;
     if (pairings.length) {
       await supabase.from("matches").insert(
@@ -200,6 +201,7 @@ export default function TournamentRunPage() {
           user_id: user?.id ?? null,
         }))
       );
+      logDebug('nextRound inserted', pairings)
       const { data: newMatches } = await supabase
         .from("matches")
         .select("*")
@@ -234,6 +236,7 @@ export default function TournamentRunPage() {
         team_b: topIds[topIds.length - 1 - i],
       });
     }
+    logDebug('generateKnockout pairings', pairings)
     if (pairings.length === 0) return;
     await supabase.from("matches").insert(
       pairings.map((p) => ({
@@ -245,6 +248,7 @@ export default function TournamentRunPage() {
         user_id: user?.id ?? null,
       }))
     );
+    logDebug('generateKnockout inserted', pairings)
     const { data: newMatches } = await supabase
       .from('matches')
       .select('*')

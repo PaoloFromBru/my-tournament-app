@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabaseBrowser";
 import { generateNextRoundMatches } from "../../../../utils/scheduleMatches";
+import { logDebug } from "../../../../utils/logger";
 
 interface Match {
   id: string | number;
@@ -163,7 +164,7 @@ export default function TournamentRunPage() {
     const winners = currentMatches
       .map((m) => m.winner)
       .filter((w): w is string => Boolean(w));
-    console.log('nextRound winners', winners);
+    logDebug('nextRound winners', winners);
     if (winners.length !== currentMatches.length) return;
 
     if (winners.length === 1) {
@@ -172,7 +173,7 @@ export default function TournamentRunPage() {
     }
 
     const pairings = generateNextRoundMatches(winners);
-    console.log('nextRound pairings', pairings);
+    logDebug('nextRound pairings', pairings);
     const nextRoundNum = currentRound + 1;
     if (pairings.length) {
       await supabase.from("matches").insert(
@@ -186,6 +187,7 @@ export default function TournamentRunPage() {
           user_id: user?.id ?? null,
         }))
       );
+      logDebug('nextRound inserted', pairings)
       const { data: newMatches } = await supabase
         .from("matches")
         .select("*")

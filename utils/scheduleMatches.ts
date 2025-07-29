@@ -29,10 +29,12 @@ export function generateKnockoutMatches(teamIds: string[]): { team_a: string, te
   return matches;
 }
 
+import { logDebug } from './logger'
+
 export function generateNextRoundMatches(
   winners: (string | number)[]
 ): { team_a: string | number; team_b: string | number | null; winner?: string | number }[] {
-  console.log('generateNextRoundMatches input winners', winners);
+  logDebug('generateNextRoundMatches input', winners)
   const pairings: { team_a: string | number; team_b: string | number | null; winner?: string | number }[] = [];
   for (let i = 0; i < winners.length; i += 2) {
     const teamA = winners[i];
@@ -43,6 +45,6 @@ export function generateNextRoundMatches(
       pairings.push({ team_a: teamA, team_b: teamB });
     }
   }
-  console.log('generateNextRoundMatches output pairings', pairings);
+  logDebug('generateNextRoundMatches output', pairings)
   return pairings;
 }
