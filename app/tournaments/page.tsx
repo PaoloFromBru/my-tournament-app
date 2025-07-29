@@ -55,7 +55,8 @@ export default function TournamentsPage() {
         const { data: tourData } = await supabase
           .from("tournaments")
           .select("id, name, format, tournament_teams(team_id)")
-          .eq("user_id", userData.user.id);
+          .eq("user_id", userData.user.id)
+          .eq("sport_id", sid);
         const converted = (tourData || []).map((t) => ({
           id: t.id,
           name: t.name,
@@ -75,7 +76,7 @@ export default function TournamentsPage() {
   ) => {
     const { data: inserted } = await supabase
       .from("tournaments")
-      .insert({ name, format, user_id: user.id })
+      .insert({ name, format, user_id: user.id, sport_id: sportId })
       .select()
       .single();
     return inserted?.id;
