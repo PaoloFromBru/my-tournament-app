@@ -78,7 +78,11 @@ export default function TeamsPage() {
       setPlayers(playersWithSkills);
 
       const [{ data: teamRows }, { data: teamPlayerRows }] = await Promise.all([
-        supabase.from("teams").select("*").eq("user_id", userId),
+        supabase
+          .from("teams")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("sport_id", sportId),
         supabase.from("team_players").select("*").eq("user_id", userId),
       ]);
 
@@ -95,9 +99,13 @@ export default function TeamsPage() {
     load();
   }, [sportId, userId]);
 
-  const refreshTeams = async (uid: string) => {
+  const refreshTeams = async (uid: string, sid: string | null) => {
     const [{ data: teamRows }, { data: teamPlayerRows }] = await Promise.all([
-      supabase.from("teams").select("*").eq("user_id", uid),
+      supabase
+        .from("teams")
+        .select("*")
+        .eq("user_id", uid)
+        .eq("sport_id", sid),
       supabase.from("team_players").select("*").eq("user_id", uid),
     ]);
     const combined: TeamRow[] = (teamRows || []).map((t) => ({
@@ -111,11 +119,11 @@ export default function TeamsPage() {
   };
 
   const addTeam = async (name: string, memberIds: string[]) => {
-    if (!userId) return;
+    if (!userId || !sportId) return;
     if (!name || memberIds.length !== teamSize) return;
     const { data: inserted } = await supabase
       .from("teams")
-      .insert({ name, user_id: userId })
+      .insert({ name, user_id: userId, sport_id: sportId })
       .select()
       .single();
     const teamId = inserted?.id;
@@ -124,7 +132,7 @@ export default function TeamsPage() {
         memberIds.map((pid) => ({ team_id: teamId, player_id: pid, user_id: userId }))
       );
     }
-    await refreshTeams(userId);
+    await refreshTeams(userId, sportId);
   };
 
   const editTeam = async (team: TeamRow) => {
@@ -164,7 +172,7 @@ export default function TeamsPage() {
     await supabase.from("team_players").insert(
       ids.map((pid) => ({ team_id: team.id, player_id: pid, user_id: userId }))
     );
-    await refreshTeams(userId);
+    await refreshTeams(userId, sportId);
   };
 
   const deleteTeam = async (id: string) => {
@@ -197,12 +205,12 @@ export default function TeamsPage() {
   };
 
   const setGeneratedTeams = async (newTeams: Team[]) => {
-    if (!userId) return;
+    if (!userId || !sportId) return;
     setLoading(true);
     for (const t of newTeams) {
       const { data: inserted } = await supabase
         .from("teams")
-        .insert({ name: t.name, user_id: userId })
+        .insert({ name: t.name, user_id: userId, sport_id: sportId })
         .select()
         .single();
       const teamId = inserted?.id;
@@ -212,7 +220,7 @@ export default function TeamsPage() {
         );
       }
     }
-    await refreshTeams(userId);
+    await refreshTeams(userId, sportId);
     setLoading(false);
   };
 
