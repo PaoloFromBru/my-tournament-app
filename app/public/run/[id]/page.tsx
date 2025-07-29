@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabaseBrowser";
+import { generateNextRoundMatches } from "../../../../utils/scheduleMatches";
 
 interface Match {
   id: string | number;
@@ -151,14 +152,18 @@ export default function TournamentRunPage() {
   };
 
   const nextRound = async () => {
-    const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
-    const currentRound = Math.max(...phaseNums, 1);
-    const currentMatches = matches.filter(
+    const koMatches = matches.filter((m) => m.phase.startsWith("round"));
+    if (koMatches.length === 0) return;
+
+    const phaseNums = koMatches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 1);
+    const currentRound = Math.max(...phaseNums);
+    const currentMatches = koMatches.filter(
       (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound
     );
     const winners = currentMatches
       .map((m) => m.winner)
       .filter((w): w is string => Boolean(w));
+    console.log('nextRound winners', winners);
     if (winners.length !== currentMatches.length) return;
 
     if (winners.length === 1) {
@@ -166,56 +171,25 @@ export default function TournamentRunPage() {
       return;
     }
 
-    const byeCounts: Record<string, number> = {};
-    matches.forEach((m) => {
-      if ((m.team_a && !m.team_b) || (m.team_b && !m.team_a)) {
-        const id = (m.team_a || m.team_b) as string;
-        byeCounts[id] = (byeCounts[id] || 0) + 1;
-      }
-    });
-
-    const pairings: { team_a: string; team_b: string | null; winner?: string }[] = [];
-    const ordered = [...winners];
-
-    if (ordered.length % 2 === 1) {
-      let byeTeam = ordered[0];
-      for (const id of ordered) {
-        const count = byeCounts[id] || 0;
-        if (count < (byeCounts[byeTeam] || 0)) {
-          byeTeam = id;
-        }
-      }
-      ordered.splice(ordered.indexOf(byeTeam), 1);
-      pairings.push({ team_a: byeTeam, team_b: null, winner: byeTeam });
-    }
-
-    for (let i = 0; i < ordered.length; i += 2) {
-      if (ordered[i + 1] !== undefined) {
-        pairings.push({ team_a: ordered[i], team_b: ordered[i + 1] });
-      }
-    }
-
+    const pairings = generateNextRoundMatches(winners);
+    console.log('nextRound pairings', pairings);
     const nextRoundNum = currentRound + 1;
     if (pairings.length) {
       await supabase.from("matches").insert(
         pairings.map((p) => ({
           team_a: p.team_a,
           team_b: p.team_b,
-          winner: p.winner,
+          winner: p.winner ?? null,
           phase: `round${nextRoundNum}`,
           scheduled_at: null,
           tournament_id: id,
           user_id: user?.id ?? null,
         }))
       );
-      let roundQuery = supabase
+      const { data: newMatches } = await supabase
         .from("matches")
         .select("*")
         .eq("tournament_id", id);
-      roundQuery = user
-        ? roundQuery.eq("user_id", user.id)
-        : roundQuery.is("user_id", null);
-      const { data: newMatches } = await roundQuery;
       setMatches(newMatches || []);
 
       const initial = { ...scores };
@@ -287,23 +261,33 @@ export default function TournamentRunPage() {
       (parseInt(b.replace(/\D/g, "")) || 0)
   );
 
-  const phaseNums = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
-  const currentRound = Math.max(...phaseNums, 1);
+  const koPhaseNums = matches
+    .filter((m) => m.phase.startsWith('round'))
+    .map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
+  const currentRound = koPhaseNums.length ? Math.max(...koPhaseNums) : 0;
   const currentMatches = matches.filter(
-    (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound
+    (m) =>
+      m.phase.startsWith('round') &&
+      (parseInt(m.phase.replace(/\D/g, "")) || 0) === currentRound
   );
   const allDone = currentMatches.length > 0 && currentMatches.every((m) => m.winner);
   const hasNext = matches.some(
-    (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound + 1
+    (m) =>
+      m.phase.startsWith('round') &&
+      (parseInt(m.phase.replace(/\D/g, "")) || 0) === currentRound + 1
   );
   const canAdvance = allDone && !hasNext && currentMatches.length > 1;
 
   useEffect(() => {
     if (celebrated) return;
-    const phaseNumsLocal = matches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
+    const phaseNumsLocal = matches
+      .filter((m) => m.phase.startsWith('round'))
+      .map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
     const maxRound = Math.max(...phaseNumsLocal, 1);
     const finalMatches = matches.filter(
-      (m) => parseInt(m.phase.replace(/\D/g, "")) === maxRound
+      (m) =>
+        m.phase.startsWith('round') &&
+        (parseInt(m.phase.replace(/\D/g, "")) || 0) === maxRound
     );
     if (finalMatches.length === 1 && finalMatches[0].winner) {
       triggerConfetti();
