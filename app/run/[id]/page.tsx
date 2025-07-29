@@ -30,6 +30,7 @@ export default function TournamentRunPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
+  const [readyForKnockout, setReadyForKnockout] = useState(false);
   // ensures initial match generation only happens once
   const initialized = useRef(false);
 
@@ -211,6 +212,56 @@ export default function TournamentRunPage() {
     }
   };
 
+  const generateKnockout = async () => {
+    const rrMatches = matches.filter((m) => !m.phase.startsWith('round'));
+    const stats: Record<string, { wins: number; diff: number }> = {};
+    teams.forEach((t) => {
+      stats[String(t.id)] = { wins: 0, diff: 0 };
+    });
+    rrMatches.forEach((m) => {
+      if (m.winner !== null) {
+        stats[String(m.winner)].wins += 1;
+      }
+      if (m.score_a != null && m.score_b != null) {
+        stats[String(m.team_a)].diff += (m.score_a ?? 0) - (m.score_b ?? 0);
+        stats[String(m.team_b)].diff += (m.score_b ?? 0) - (m.score_a ?? 0);
+      }
+    });
+    const ranked = Object.entries(stats)
+      .sort((a, b) => {
+        if (b[1].wins !== a[1].wins) return b[1].wins - a[1].wins;
+        return b[1].diff - a[1].diff;
+      })
+      .map(([id]) => Number(id));
+    const count = ranked.length >= 4 ? 4 : 2;
+    const top = ranked.slice(0, count);
+    const pairings: { team_a: number; team_b: number }[] = [];
+    if (top.length === 4) {
+      pairings.push({ team_a: top[0], team_b: top[3] });
+      pairings.push({ team_a: top[1], team_b: top[2] });
+    } else if (top.length === 2) {
+      pairings.push({ team_a: top[0], team_b: top[1] });
+    } else {
+      return;
+    }
+    await supabase.from('matches').insert(
+      pairings.map((p) => ({
+        team_a: p.team_a,
+        team_b: p.team_b,
+        phase: 'round1',
+        scheduled_at: null,
+        tournament_id: id,
+        user_id: user?.id ?? null,
+      }))
+    );
+    const { data: newMatches } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('tournament_id', id);
+    setMatches(newMatches || []);
+    setReadyForKnockout(false);
+  };
+
   const saveResult = async (m: Match) => {
     const sc = scores[String(m.id)] || { a: 0, b: 0 };
     const winner = sc.a === sc.b ? null : sc.a > sc.b ? m.team_a : m.team_b;
@@ -295,64 +346,18 @@ export default function TournamentRunPage() {
   }, [matches, celebrated]);
 
   useEffect(() => {
-    const maybeGenerateKnockout = async () => {
-      if (!tournament || tournament.format !== 'round_robin') return;
-      if (matches.length === 0) return;
-      const rrMatches = matches.filter((m) => !m.phase.startsWith('round'));
-      const knockoutExists = matches.some((m) => m.phase.startsWith('round'));
-      if (knockoutExists) return;
-      if (rrMatches.length === 0) return;
-      const allDone = rrMatches.every((m) => m.winner);
-      if (!allDone) return;
-
-      const stats: Record<string, { wins: number; diff: number }> = {};
-      teams.forEach((t) => {
-        stats[String(t.id)] = { wins: 0, diff: 0 };
-      });
-      rrMatches.forEach((m) => {
-        if (m.winner !== null) {
-          stats[String(m.winner)].wins += 1;
-        }
-        if (m.score_a != null && m.score_b != null) {
-          stats[String(m.team_a)].diff += (m.score_a ?? 0) - (m.score_b ?? 0);
-          stats[String(m.team_b)].diff += (m.score_b ?? 0) - (m.score_a ?? 0);
-        }
-      });
-      const ranked = Object.entries(stats)
-        .sort((a, b) => {
-          if (b[1].wins !== a[1].wins) return b[1].wins - a[1].wins;
-          return b[1].diff - a[1].diff;
-        })
-        .map(([id]) => Number(id));
-      const count = ranked.length >= 4 ? 4 : 2;
-      const top = ranked.slice(0, count);
-      const pairings: { team_a: number; team_b: number }[] = [];
-      if (top.length === 4) {
-        pairings.push({ team_a: top[0], team_b: top[3] });
-        pairings.push({ team_a: top[1], team_b: top[2] });
-      } else if (top.length === 2) {
-        pairings.push({ team_a: top[0], team_b: top[1] });
-      } else {
-        return;
-      }
-      await supabase.from('matches').insert(
-        pairings.map((p) => ({
-          team_a: p.team_a,
-          team_b: p.team_b,
-          phase: 'round1',
-          scheduled_at: null,
-          tournament_id: id,
-          user_id: user?.id ?? null,
-        }))
-      );
-      const { data: newMatches } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('tournament_id', id);
-      setMatches(newMatches || []);
-    };
-    maybeGenerateKnockout();
-  }, [matches, tournament, teams, id, user]);
+    if (!tournament || tournament.format !== 'round_robin') return;
+    if (matches.length === 0) return;
+    const rrMatches = matches.filter((m) => !m.phase.startsWith('round'));
+    const knockoutExists = matches.some((m) => m.phase.startsWith('round'));
+    if (knockoutExists) {
+      setReadyForKnockout(false);
+      return;
+    }
+    if (rrMatches.length === 0) return;
+    const allDone = rrMatches.every((m) => m.winner);
+    setReadyForKnockout(allDone);
+  }, [matches, tournament]);
 
   return (
     <div className="space-y-4">
@@ -416,6 +421,14 @@ export default function TournamentRunPage() {
           </div>
         ))}
       </div>
+      {readyForKnockout && (
+        <Button
+          className="bg-purple-500 hover:bg-purple-600"
+          onClick={generateKnockout}
+        >
+          Next Phase
+        </Button>
+      )}
       {canAdvance && (
         <Button className="bg-blue-500 hover:bg-blue-600" onClick={nextRound}>
           Next Round
