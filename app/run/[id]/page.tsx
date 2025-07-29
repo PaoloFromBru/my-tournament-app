@@ -243,7 +243,7 @@ export default function TournamentRunPage() {
   const generateKnockout = async () => {
     const knockoutCount = (total: number) => {
       let count = 2;
-      while (total > count * 2 + 1) {
+      while (count * 2 <= total && count < 8) {
         count *= 2;
       }
       return count;
