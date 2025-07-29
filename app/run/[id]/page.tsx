@@ -177,6 +177,7 @@ export default function TournamentRunPage() {
     const winners = currentMatches
       .map((m) => m.winner)
       .filter((w): w is number => Boolean(w));
+    console.log('nextRound winners', winners);
     if (winners.length !== currentMatches.length) return;
 
     if (winners.length === 1) {
@@ -185,6 +186,7 @@ export default function TournamentRunPage() {
     }
 
     const pairings = generateNextRoundMatches(winners);
+    console.log('nextRound pairings', pairings);
     const nextRoundNum = currentRound + 1;
     if (pairings.length) {
       await supabase.from("matches").insert(
