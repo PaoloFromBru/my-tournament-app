@@ -228,8 +228,8 @@ export default function TournamentRunPage() {
     };
 
     const count = Math.min(knockoutCount(teams.length), rankings.length);
-    const topIds = rankings.slice(0, count).map((r) => Number(r.id));
-    const pairings: { team_a: number; team_b: number }[] = [];
+    const topIds = rankings.slice(0, count).map((r) => r.id);
+    const pairings: { team_a: string | number; team_b: string | number }[] = [];
     for (let i = 0; i < topIds.length / 2; i++) {
       pairings.push({
         team_a: topIds[i],
