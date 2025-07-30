@@ -21,9 +21,15 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   );
 }
 
-export function DialogContent({ children }: { children: ReactNode }) {
+export function DialogContent({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="bg-white p-6 rounded shadow-lg max-w-sm w-full">
+    <div className={`bg-white p-6 rounded shadow-lg max-w-sm w-full ${className}`.trim()}>
       {children}
     </div>
   );
