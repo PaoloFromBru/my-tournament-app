@@ -202,7 +202,7 @@ export default function PlayersView() {
       {showOverlay && (
         <DonationModal
           onClose={dismissTemporarily}
-          stripeLink="https://buy.stripe.com/3cIfZie5z8KwcAq9xDak000"
+          stripeLink="https://buy.stripe.com/test_28EeVe8Fb2OS6fH6dr53O00"
         />
       )}
       <div className="max-w-2xl mx-auto p-6">
