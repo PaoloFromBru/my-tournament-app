@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { Button } from "./ui/button";
-import { useDonationPrompt } from "@/hooks/useDonationPrompt";
+import { useDonationOverlay } from "@/hooks/useDonationOverlay";
 import DonationModal from "./DonationModal";
 
 export default function PlayersView() {
@@ -14,8 +14,13 @@ export default function PlayersView() {
   const [loading, setLoading] = useState(true);
   const [newPlayerName, setNewPlayerName] = useState<string>("");
   const [filter, setFilter] = useState<string>("");
+  const [userProfile, setUserProfile] = useState<any | null>(null);
 
-  const shouldPrompt = useDonationPrompt(players.length);
+  const { showOverlay, dismissTemporarily } = useDonationOverlay(
+    userProfile,
+    players.length
+  );
+
 
   const sortPlayers = (list: any[]) =>
     list.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -31,20 +36,23 @@ export default function PlayersView() {
     getUser();
   }, []);
 
-  // 2. Get sport from user_profiles
+  // 2. Get user profile
   useEffect(() => {
     if (!userId) return;
 
-    const getSport = async () => {
+    const getProfile = async () => {
       const { data } = await supabase
         .from("user_profiles")
-        .select("sport_id")
+        .select("sport_id, paying_status, donation_date")
         .eq("user_id", userId)
         .single();
-      if (data?.sport_id) setSportId(data.sport_id as string);
+      if (data) {
+        if (data.sport_id) setSportId(data.sport_id as string);
+        setUserProfile(data);
+      }
     };
 
-    getSport();
+    getProfile();
   }, [userId]);
 
   // 3. Load sport info (skills and name)
@@ -191,7 +199,12 @@ export default function PlayersView() {
 
   return (
     <>
-      {shouldPrompt && <DonationModal open={true} onClose={() => {}} />}
+      {showOverlay && (
+        <DonationModal
+          onClose={dismissTemporarily}
+          stripeLink="https://buy.stripe.com/3cIfZie5z8KwcAq9xDak000"
+        />
+      )}
       <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-xl font-bold mb-4 flex items-baseline gap-2">
         Players
