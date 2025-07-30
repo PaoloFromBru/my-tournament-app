@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
     const email = event.data?.object?.customer_details?.email;
     if (email && supabaseUrl && serviceRoleKey) {
       const supabase = createClient(supabaseUrl, serviceRoleKey);
-      const { data: user } = await supabase.auth.admin.getUserByEmail(email);
+      const { data } = await supabase.auth.admin.listUsers();
+      const user = data?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
       const userId = user?.id;
       if (userId) {
         await supabase
