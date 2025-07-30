@@ -35,10 +35,28 @@ export function DialogContent({
   );
 }
 
-export function DialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-lg font-bold">{children}</h2>;
+export function DialogTitle({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2 className={`text-lg font-bold ${className}`.trim()}>{children}</h2>
+  );
 }
 
-export function DialogDescription({ children }: { children: ReactNode }) {
-  return <p className="mt-2 text-sm text-gray-600">{children}</p>;
+export function DialogDescription({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mt-2 text-sm text-gray-600 ${className}`.trim()}>
+      {children}
+    </div>
+  );
 }
