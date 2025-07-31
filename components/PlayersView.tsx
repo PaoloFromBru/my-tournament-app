@@ -17,7 +17,7 @@ export default function PlayersView() {
   const [filter, setFilter] = useState<string>("");
   const [userProfile, setUserProfile] = useState<any | null>(null);
 
-  const { status, dismissTemporarily } = useDonationOverlay(
+  const { status, dismissTemporarily, dismissThankYou } = useDonationOverlay(
     userProfile,
     players.length
   );
@@ -207,16 +207,7 @@ export default function PlayersView() {
         />
       )}
 
-      {status === "thankyou" && (
-        <ThankYouModal
-          onClose={() =>
-            localStorage.setItem(
-              "hideDonateOverlayUntil",
-              Date.now().toString()
-            )
-          }
-        />
-      )}
+      {status === "thankyou" && <ThankYouModal onClose={dismissThankYou} />}
 
       <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-xl font-bold mb-4 flex items-baseline gap-2">
