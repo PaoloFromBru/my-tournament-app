@@ -15,6 +15,8 @@ export default function SettingsPage() {
   const [sportStatus, setSportStatus] = useState("");
   const [sportLoading, setSportLoading] = useState(true);
   const [sportSkills, setSportSkills] = useState<string[]>([]);
+  const [payingStatus, setPayingStatus] = useState<string>("free");
+  const [donationDate, setDonationDate] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,10 +39,14 @@ export default function SettingsPage() {
     const fetchUserProfile = async () => {
       const { data } = await supabase
         .from("user_profiles")
-        .select("sport_id")
+        .select("sport_id, paying_status, donation_date")
         .eq("user_id", user.id)
         .single();
-      if (data?.sport_id) setSelectedSportId(data.sport_id);
+      if (data) {
+        if (data.sport_id) setSelectedSportId(data.sport_id);
+        if (data.paying_status) setPayingStatus(data.paying_status as string);
+        setDonationDate(data.donation_date as string | null);
+      }
       setSportLoading(false);
     };
     fetchUserProfile();
@@ -228,6 +234,35 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-2xl font-semibold">Settings</h2>
+
+      <section className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+        <h3 className="font-semibold">Subscription</h3>
+        <p className="text-sm text-gray-600">Your current support level for the app.</p>
+        <div className="mt-3 flex flex-col gap-3">
+          {payingStatus === "donated" && donationDate && (
+            <div className="text-green-700 text-sm">
+              🎉 Thank you for your donation on{" "}
+              {new Date(donationDate).toLocaleDateString()}!
+            </div>
+          )}
+          {payingStatus === "pro" && (
+            <div className="text-yellow-800 text-sm">🌟 You have Pro access!</div>
+          )}
+          {payingStatus === "free" && (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-gray-600">You're on the free tier.</span>
+              <a
+                href="https://buy.stripe.com/test_28EeVe8Fb2OS6fH6dr53O00"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1 rounded bg-yellow-500 text-white hover:bg-yellow-600 text-xs"
+              >
+                Donate ❤️
+              </a>
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
         <h3 className="font-semibold">User Settings</h3>
