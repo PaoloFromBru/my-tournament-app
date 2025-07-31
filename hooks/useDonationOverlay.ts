@@ -1,42 +1,47 @@
 import { useEffect, useState } from "react";
 
-const DONATION_THRESHOLD = 50;
-const LATER_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
-
 export function useDonationOverlay(userProfile: any, playersCount: number) {
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [status, setStatus] = useState<"show" | "thankyou" | "hidden">("hidden");
 
   useEffect(() => {
     if (!userProfile) return;
 
-    const isFree = userProfile.paying_status === "free";
     const donationDate = userProfile.donation_date
       ? new Date(userProfile.donation_date)
       : null;
+    const isDonated = userProfile.paying_status === "donated";
 
-    // If donated less than a year ago, suppress
-    if (userProfile.paying_status === "donated" && donationDate) {
+    const hideUntil = localStorage.getItem("hideDonateOverlayUntil");
+    const suppressed = hideUntil && Date.now() < parseInt(hideUntil);
+
+    if (isDonated && donationDate) {
       const oneYearLater = new Date(donationDate);
       oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-      if (new Date() < oneYearLater) return;
+
+      if (new Date() < oneYearLater) {
+        setStatus("thankyou");
+        return;
+      }
     }
 
-    // Check if "Later" was clicked recently
-    const hideUntil = localStorage.getItem("hideDonateOverlayUntil");
-    if (hideUntil && Date.now() < parseInt(hideUntil)) return;
-
-    if (isFree && playersCount >= DONATION_THRESHOLD) {
-      setShowOverlay(true);
+    if (
+      userProfile.paying_status === "free" &&
+      playersCount >= 50 &&
+      !suppressed
+    ) {
+      setStatus("show");
+    } else {
+      setStatus("hidden");
     }
   }, [userProfile, playersCount]);
 
   const dismissTemporarily = () => {
     localStorage.setItem(
       "hideDonateOverlayUntil",
-      (Date.now() + LATER_DELAY_MS).toString()
+      (Date.now() + 7 * 86400000).toString()
     );
-    setShowOverlay(false);
+    setStatus("hidden");
   };
 
-  return { showOverlay, dismissTemporarily };
+  return { status, dismissTemporarily };
 }
