@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 export function useDonationOverlay(userProfile: any, playersCount: number) {
-  const [status, setStatus] = useState<"show" | "thankyou" | "hidden">("hidden");
+  const [status, setStatus] =
+    useState<"show" | "thankyou" | "hidden">("hidden");
 
   useEffect(() => {
     if (!userProfile) return;
@@ -18,7 +19,7 @@ export function useDonationOverlay(userProfile: any, playersCount: number) {
       const oneYearLater = new Date(donationDate);
       oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
 
-      if (new Date() < oneYearLater) {
+      if (new Date() < oneYearLater && !suppressed) {
         setStatus("thankyou");
         return;
       }
@@ -43,5 +44,20 @@ export function useDonationOverlay(userProfile: any, playersCount: number) {
     setStatus("hidden");
   };
 
-  return { status, dismissTemporarily };
+  const dismissThankYou = () => {
+    const donationDate = userProfile?.donation_date
+      ? new Date(userProfile.donation_date)
+      : null;
+
+    let hideUntil = Date.now() + 365 * 86400000;
+    if (donationDate) {
+      const oneYearLater = new Date(donationDate);
+      oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+      hideUntil = oneYearLater.getTime();
+    }
+    localStorage.setItem("hideDonateOverlayUntil", hideUntil.toString());
+    setStatus("hidden");
+  };
+
+  return { status, dismissTemporarily, dismissThankYou };
 }
