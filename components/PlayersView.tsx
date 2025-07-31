@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseBrowser";
 import { Button } from "./ui/button";
 import { useDonationOverlay } from "@/hooks/useDonationOverlay";
 import DonationModal from "./DonationModal";
+import ThankYouModal from "./ThankYouModal";
 
 export default function PlayersView() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -16,7 +17,7 @@ export default function PlayersView() {
   const [filter, setFilter] = useState<string>("");
   const [userProfile, setUserProfile] = useState<any | null>(null);
 
-  const { showOverlay, dismissTemporarily } = useDonationOverlay(
+  const { status, dismissTemporarily } = useDonationOverlay(
     userProfile,
     players.length
   );
@@ -199,12 +200,24 @@ export default function PlayersView() {
 
   return (
     <>
-      {showOverlay && (
+      {status === "show" && (
         <DonationModal
           onClose={dismissTemporarily}
           stripeLink="https://buy.stripe.com/test_28EeVe8Fb2OS6fH6dr53O00"
         />
       )}
+
+      {status === "thankyou" && (
+        <ThankYouModal
+          onClose={() =>
+            localStorage.setItem(
+              "hideDonateOverlayUntil",
+              Date.now().toString()
+            )
+          }
+        />
+      )}
+
       <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-xl font-bold mb-4 flex items-baseline gap-2">
         Players
