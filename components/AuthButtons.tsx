@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseBrowser";
 
 export default function AuthButtons() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -30,11 +32,13 @@ export default function AuthButtons() {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('logout error', error.message);
+      return;
     }
+    router.push('/');
   };
 
   const login = () => {
-    // Login overlay appears automatically when no user
+    router.push('/login');
   };
 
   return user ? (
