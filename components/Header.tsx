@@ -39,6 +39,34 @@ export default function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    const ensureUserProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (!data && !error) {
+        await supabase.from('user_profiles').insert({
+          id: user.id,
+          email: user.email,
+          created_at: new Date().toISOString(),
+          paying_status: 'free',
+          selected_sport: 'babyfoot',
+        });
+      }
+    };
+
+    ensureUserProfile();
+  }, []);
+
   const onLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
