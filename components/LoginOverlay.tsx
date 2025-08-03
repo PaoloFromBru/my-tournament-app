@@ -9,6 +9,8 @@ export default function LoginOverlay({ children }: { children: React.ReactNode }
     pathname === "/" ||
     pathname === "/create" ||
     pathname === "/demo" ||
+    pathname === "/login" ||
+    pathname === "/register" ||
     pathname.includes("/public");
   const [user, setUser] = useState<any>(undefined);
   const [email, setEmail] = useState("");
