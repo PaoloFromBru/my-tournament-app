@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "../components/Header";
-import LoginOverlay from "../components/LoginOverlay";
+import AuthRedirect from "../components/AuthRedirect";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,10 +30,10 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <LoginOverlay>
+        <AuthRedirect>
           <Header />
           <main className="p-4">{children}</main>
-        </LoginOverlay>
+        </AuthRedirect>
       </body>
     </html>
   );

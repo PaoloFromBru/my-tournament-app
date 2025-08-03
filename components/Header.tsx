@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "../lib/supabaseBrowser";
@@ -15,6 +15,7 @@ const tabs = [
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +43,9 @@ export default function Header() {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("logout error", error.message);
+      return;
     }
+    router.push("/");
   };
 
   return (
@@ -61,15 +64,22 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Right: Logout */}
+        {/* Right: Auth */}
         <div className="flex items-center gap-4">
-          {userEmail && (
+          {userEmail ? (
             <button
               onClick={onLogout}
               className="text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition"
             >
               Logout
             </button>
+          ) : (
+            <Link
+              href="/login"
+              className="text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition"
+            >
+              Login
+            </Link>
           )}
         </div>
       </div>
