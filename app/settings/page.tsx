@@ -346,6 +346,11 @@ export default function SettingsPage() {
           </Button>
         </div>
       </section>
+
+      {/* App version */}
+      <div className="mt-8 text-center text-sm text-gray-400">
+        MyTournamentApp v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}
+      </div>
     </div>
   );
 }
