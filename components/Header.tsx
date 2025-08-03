@@ -19,15 +19,15 @@ export default function Header() {
 
   useEffect(() => {
     supabase.auth
-      .getUser()
+      .getSession()
       .then(({ data, error }) => {
         if (error) {
-          console.error("getUser error", error.message);
+          console.error("getSession error", error.message);
         }
-        setUserEmail(data.user?.email ?? null);
+        setUserEmail(data.session?.user?.email ?? null);
       })
       .catch((err) => {
-        console.error("getUser failed", err?.message);
+        console.error("getSession failed", err?.message);
         setUserEmail(null);
       });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
