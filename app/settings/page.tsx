@@ -3,6 +3,9 @@ import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseBrowser";
 import { Button } from "../../components/ui/button";
 
+const STRIPE_DONATION_LINK =
+  "https://buy.stripe.com/9B6dRa1iN0e0dEu39fak001";
+
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -252,7 +255,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="text-gray-600">You're on the free tier.</span>
               <a
-                href="https://buy.stripe.com/9B6dRa1iN0e0dEu39fak001"
+                href={STRIPE_DONATION_LINK}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3 py-1 rounded bg-yellow-500 text-white hover:bg-yellow-600 text-xs"
