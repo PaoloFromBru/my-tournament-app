@@ -203,7 +203,7 @@ export default function PlayersView() {
       {status === "show" && (
         <DonationModal
           onClose={dismissTemporarily}
-          stripeLink="https://buy.stripe.com/test_28EeVe8Fb2OS6fH6dr53O00"
+          stripeLink="https://buy.stripe.com/9B6dRa1iN0e0dEu39fak001"
         />
       )}
 
