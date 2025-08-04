@@ -19,6 +19,8 @@ export default function Header() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch the existing session on mount. Using getSession avoids "Auth session missing" errors
+    // that occurred with getUser when no active session was present.
     supabase.auth
       .getSession()
       .then(({ data, error }) => {
@@ -31,6 +33,7 @@ export default function Header() {
         console.error("getSession failed", err?.message);
         setUserEmail(null);
       });
+    // Subscribe to auth changes to update the displayed email when the session changes.
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUserEmail(session?.user?.email ?? null);
     });
