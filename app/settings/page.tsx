@@ -252,7 +252,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="text-gray-600">You're on the free tier.</span>
               <a
-                href="https://buy.stripe.com/test_28EeVe8Fb2OS6fH6dr53O00"
+                href="https://buy.stripe.com/9B6dRa1iN0e0dEu39fak001"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3 py-1 rounded bg-yellow-500 text-white hover:bg-yellow-600 text-xs"
