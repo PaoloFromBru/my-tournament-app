@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export default function Home() {
   return (
     <div className="bg-gray-50 text-gray-800 font-sans">
@@ -80,6 +82,26 @@ export default function Home() {
           className="bg-indigo-600 text-white py-3 px-6 rounded-lg text-lg hover:bg-indigo-700 transition"
         >
           Create Your Tournament
+        </a>
+      </section>
+
+      {/* Booking Button */}
+      <section className="py-16 px-6 md:px-12 bg-white text-center">
+        <Script
+          id="setmore_script"
+          type="text/javascript"
+          src="https://assets.setmore.com/integration/static/setmoreIframeLive.js"
+        />
+        <a
+          style={{ float: "none" }}
+          id="Setmore_button_iframe"
+          href="https://hauben.setmore.com"
+        >
+          <img
+            src="https://assets.setmore.com/setmore/images/2.0/Settings/book-now-black.svg"
+            alt="Click here to book the appointment using setmore"
+            style={{ border: "none" }}
+          />
         </a>
       </section>
 
