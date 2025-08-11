@@ -87,22 +87,12 @@ export default function Home() {
 
       {/* Booking Button */}
       <section className="py-16 px-6 md:px-12 bg-white text-center">
-        <Script
-          id="setmore_script"
-          type="text/javascript"
-          src="https://assets.setmore.com/integration/static/setmoreIframeLive.js"
+        <div
+          dangerouslySetInnerHTML={{
+            __html:
+              "<script id='setmore_script' type='text/javascript' src='https://assets.setmore.com/integration/static/setmoreIframeLive.js'></script><a style='float:none;' id='Setmore_button_iframe' href='https://hauben.setmore.com'><img border='none' src='https://assets.setmore.com/setmore/images/2.0/Settings/book-now-black.svg' alt='Click here to book the appointment using setmore' /></a>",
+          }}
         />
-        <a
-          style={{ float: "none" }}
-          id="Setmore_button_iframe"
-          href="https://hauben.setmore.com"
-        >
-          <img
-            src="https://assets.setmore.com/setmore/images/2.0/Settings/book-now-black.svg"
-            alt="Click here to book the appointment using setmore"
-            style={{ border: "none" }}
-          />
-        </a>
       </section>
 
       {/* FAQ */}
