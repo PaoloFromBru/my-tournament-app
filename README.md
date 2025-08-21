@@ -3,9 +3,10 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Backend Setup
 
 1. Create a [Supabase](https://supabase.com) project.
-2. In the Supabase dashboard create three tables:
+2. In the Supabase dashboard create the following tables:
    - **players** with columns `id` (uuid, primary key), `name` (text), `offense` (int4), `defense` (int4).
    - **tournaments** with columns `id` (uuid, primary key) and `name` (text).
+   - **tournament_teams** with columns `tournament_id` (uuid, references `tournaments.id`) and `team_id` (uuid, references `teams.id`).
    - **user_profiles** with column `user_id` (uuid, primary key).
 3. Run the following SQL so a profile row is automatically created whenever a new user signs up:
 
@@ -27,6 +28,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 5. In the **Email** settings choose **Email OTP** for "Confirm signup" so new accounts receive a numeric code instead of a magic link. Also set the password recovery redirect URL to `<your site>/reset` so the reset link leads to the page for choosing a new password.
 6. Set the SMTP settings to use your [Resend](https://resend.com) credentials so Supabase will send the emails via Resend.
 7. Grab the project URL and anon key from the Supabase settings and add them to an `.env` file using the variables shown in `.env.example`.
+8. Enable Row Level Security on the `players` and `tournament_teams` tables by running the SQL in [`scripts/enable_rls.sql`](./scripts/enable_rls.sql) using the Supabase SQL editor.
 
 ## Authentication
 
