@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { supabasePublic } from '@/lib/supabasePublic';
 import QRCode from '@/components/QRCode';
 
@@ -32,6 +32,8 @@ interface Tournament {
 
 export default function PublicTournamentView() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const showDebug = searchParams.get('debug') === '1';
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -55,11 +57,19 @@ export default function PublicTournamentView() {
         .single();
 
       if (tournamentError || !t) {
+        console.error('[public-tournament] tournament load failed', {
+          tournamentId: id,
+          error: tournamentError,
+        });
         setLoadError(tournamentError?.message || 'Tournament not found.');
         return;
       }
 
       setTournament(t as Tournament);
+      console.info('[public-tournament] loaded tournament', {
+        tournamentId: id,
+        tournament: t,
+      });
 
       const { data: teamData, error: teamsError } = await supabasePublic
         .from('tournament_teams')
@@ -67,6 +77,10 @@ export default function PublicTournamentView() {
         .eq('tournament_id', id);
 
       if (teamsError) {
+        console.error('[public-tournament] teams load failed', {
+          tournamentId: id,
+          error: teamsError,
+        });
         setLoadError(teamsError.message);
         return;
       }
@@ -77,6 +91,11 @@ export default function PublicTournamentView() {
           name: tt.teams?.name ?? '',
         }))
       );
+      console.info('[public-tournament] loaded teams', {
+        tournamentId: id,
+        teamCount: teamData?.length || 0,
+        teams: teamData,
+      });
 
       const { data: matchData, error: matchesError } = await supabasePublic
         .from('matches')
@@ -85,11 +104,21 @@ export default function PublicTournamentView() {
         .order('id', { ascending: true });
 
       if (matchesError) {
+        console.error('[public-tournament] matches load failed', {
+          tournamentId: id,
+          error: matchesError,
+        });
         setLoadError(matchesError.message);
         return;
       }
 
       setMatches(matchData || []);
+      console.info('[public-tournament] loaded matches', {
+        tournamentId: id,
+        matchCount: matchData?.length || 0,
+        phases: Array.from(new Set((matchData || []).map((m: Match) => m.phase))),
+        matches: matchData,
+      });
     };
 
     if (id) loadData();
@@ -110,6 +139,11 @@ export default function PublicTournamentView() {
         },
         (payload) => {
           const newMatch = payload.new as Match;
+          console.info('[public-tournament] realtime match update', {
+            tournamentId: id,
+            eventType: payload.eventType,
+            match: newMatch,
+          });
           setMatches((prev) => {
             const idx = prev.findIndex((m) => m.id === newMatch.id);
             if (idx !== -1) {
@@ -144,6 +178,11 @@ export default function PublicTournamentView() {
         },
         (payload) => {
           const updated = payload.new as Tournament;
+          console.warn('[public-tournament] realtime tournament update', {
+            tournamentId: id,
+            eventType: payload.eventType,
+            tournament: updated,
+          });
           setTournament((prev) => (prev ? { ...prev, ...updated } : updated));
         }
       );
@@ -163,6 +202,21 @@ export default function PublicTournamentView() {
 
   const ended = tournament.ended === true;
   const winnerName = ended && tournament.winner_id ? teamName(tournament.winner_id) : null;
+  const debugState = {
+    tournamentId: id,
+    ended,
+    winner_id: tournament.winner_id,
+    winnerName,
+    format: tournament.format,
+    teamCount: teams.length,
+    matchCount: matches.length,
+    phases: Array.from(new Set(matches.map((m) => m.phase))),
+    matchesWithWinners: matches
+      .filter((m) => m.winner !== null && m.winner !== undefined && m.winner !== '')
+      .map((m) => ({ id: m.id, phase: m.phase, winner: m.winner })),
+  };
+
+  console.info('[public-tournament] render status', debugState);
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -172,6 +226,12 @@ export default function PublicTournamentView() {
       </p>
       {winnerName && (
         <p className="mb-4 font-semibold">Winner: {winnerName}</p>
+      )}
+
+      {showDebug && (
+        <pre className="mb-4 overflow-auto rounded border bg-slate-50 p-3 text-xs text-slate-700">
+          {JSON.stringify(debugState, null, 2)}
+        </pre>
       )}
 
       <h2 className="text-xl font-semibold mt-6">Teams</h2>

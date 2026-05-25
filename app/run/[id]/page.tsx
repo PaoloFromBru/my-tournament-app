@@ -87,6 +87,55 @@ const getTournamentWinner = (
   return priorRoundsComplete ? String(finals[0].winner) : null;
 };
 
+const getTournamentDiagnostics = (
+  matches: Match[],
+  teams: Team[],
+  format?: string
+) => {
+  const rrMatches = matches.filter((m) => knockoutRoundNumber(m.phase) === null);
+  const knockoutMatches = matches.filter((m) => knockoutRoundNumber(m.phase) !== null);
+  const expectedRoundRobinMatches = (teams.length * (teams.length - 1)) / 2;
+  const roundRobinComplete =
+    expectedRoundRobinMatches > 0 &&
+    rrMatches.length >= expectedRoundRobinMatches &&
+    rrMatches.every(hasWinner);
+  const knockoutRounds = knockoutMatches.map((m) => knockoutRoundNumber(m.phase) ?? 0);
+  const maxKnockoutRound = knockoutRounds.length ? Math.max(...knockoutRounds) : 0;
+  const expectedKnockoutFinalRound = expectedFinalRound(teams.length, format);
+  const finals = knockoutMatches.filter(
+    (m) => knockoutRoundNumber(m.phase) === maxKnockoutRound
+  );
+
+  return {
+    format,
+    isRoundRobin: isRoundRobinTournament(format),
+    teamCount: teams.length,
+    matchCount: matches.length,
+    roundRobin: {
+      count: rrMatches.length,
+      expected: expectedRoundRobinMatches,
+      complete: roundRobinComplete,
+      withoutWinner: rrMatches
+        .filter((m) => !hasWinner(m))
+        .map((m) => ({ id: m.id, phase: m.phase })),
+    },
+    knockout: {
+      count: knockoutMatches.length,
+      maxRound: maxKnockoutRound,
+      expectedFinalRound: expectedKnockoutFinalRound,
+      finals: finals.map((m) => ({
+        id: m.id,
+        phase: m.phase,
+        winner: m.winner,
+        hasWinner: hasWinner(m),
+      })),
+      withoutWinner: knockoutMatches
+        .filter((m) => !hasWinner(m))
+        .map((m) => ({ id: m.id, phase: m.phase })),
+    },
+  };
+};
+
 export default function TournamentRunPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -117,6 +166,13 @@ export default function TournamentRunPage() {
       if (currentUser) tournamentQuery.eq("user_id", currentUser.id);
       const { data: t } = await tournamentQuery.single();
       setTournament(t);
+      console.info("[tournament-run] loaded tournament", {
+        id,
+        format: t?.format,
+        ended: t?.ended,
+        winner_id: t?.winner_id,
+        user_id: t?.user_id,
+      });
 
       let matchQuery = supabase
         .from("matches")
@@ -173,6 +229,12 @@ export default function TournamentRunPage() {
 
       setMatches(matchData || []);
       setTeams(teamsConverted);
+      console.info("[tournament-run] loaded matches/teams", {
+        tournamentId: id,
+        teamCount: teamsConverted.length,
+        matchCount: (matchData || []).length,
+        phases: Array.from(new Set((matchData || []).map((m: Match) => m.phase))),
+      });
 
       const initial: Record<string, { a: number; b: number }> = {};
       (matchData || []).forEach((m) => {
@@ -284,6 +346,14 @@ export default function TournamentRunPage() {
   };
 
   const generateKnockout = async () => {
+    console.info("[tournament-run] generateKnockout start", {
+      tournamentId: id,
+      rankings,
+      currentTournament: {
+        ended: tournament?.ended,
+        winner_id: tournament?.winner_id,
+      },
+    });
     // Reset the ended flag so the public page shows "in progress" again
     // until the new knockout final is decided.
     await supabase
@@ -311,6 +381,10 @@ export default function TournamentRunPage() {
     }
     logDebug('generateKnockout pairings', pairings)
     if (pairings.length === 0) return;
+    console.info("[tournament-run] generateKnockout inserting", {
+      tournamentId: id,
+      pairings,
+    });
     await supabase.from("matches").insert(
       pairings.map((p) => ({
         team_a: p.team_a,
@@ -333,6 +407,13 @@ export default function TournamentRunPage() {
   const saveResult = async (m: Match) => {
     const sc = scores[String(m.id)] || { a: 0, b: 0 };
     const winner = sc.a === sc.b ? null : sc.a > sc.b ? m.team_a : m.team_b;
+    console.info("[tournament-run] saveResult", {
+      tournamentId: id,
+      matchId: m.id,
+      phase: m.phase,
+      score: sc,
+      winner,
+    });
     let updateQuery = supabase
       .from("matches")
       .update({ winner, score_a: sc.a, score_b: sc.b })
@@ -413,9 +494,27 @@ export default function TournamentRunPage() {
     if (!tournament) return;
 
     const winner = getTournamentWinner(matches, teams, tournament.format);
+    const diagnostics = getTournamentDiagnostics(matches, teams, tournament.format);
+    console.info("[tournament-run] completion check", {
+      tournamentId: id,
+      stored: {
+        ended: tournament.ended,
+        winner_id: tournament.winner_id,
+      },
+      computedWinner: winner,
+      diagnostics,
+    });
 
     if (!winner) {
       if (tournament.ended || tournament.winner_id) {
+        console.warn("[tournament-run] clearing stale tournament winner", {
+          tournamentId: id,
+          stored: {
+            ended: tournament.ended,
+            winner_id: tournament.winner_id,
+          },
+          diagnostics,
+        });
         supabase
           .from("tournaments")
           .update({ ended: false, winner_id: null })
@@ -439,6 +538,11 @@ export default function TournamentRunPage() {
     if (!celebrated) {
       triggerConfetti();
     }
+    console.warn("[tournament-run] setting tournament winner", {
+      tournamentId: id,
+      winner,
+      diagnostics,
+    });
     setCelebrated(true);
     supabase
       .from("tournaments")
