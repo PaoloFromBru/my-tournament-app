@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseBrowser";
 import { generateNextRoundMatches } from "../../../utils/scheduleMatches";
 import { logDebug } from "../../../utils/logger";
@@ -138,7 +138,9 @@ const getTournamentDiagnostics = (
 
 export default function TournamentRunPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
+  const showDebug = searchParams.get("debug") === "1";
 
   const [user, setUser] = useState<any>(null);
   const [tournament, setTournament] = useState<any>(null);
@@ -147,6 +149,12 @@ export default function TournamentRunPage() {
   const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
   const [readyForKnockout, setReadyForKnockout] = useState(false);
+  const [lastStatusUpdate, setLastStatusUpdate] = useState<{
+    action: "set-ended" | "clear-ended";
+    ok: boolean;
+    error?: string;
+    at: string;
+  } | null>(null);
   // ensures initial match generation only happens once
   const initialized = useRef(false);
 
@@ -488,6 +496,23 @@ export default function TournamentRunPage() {
       (parseInt(m.phase.replace(/\D/g, "")) || 0) === currentRound + 1
   );
   const canAdvance = allDone && !hasNext && currentMatches.length > 1;
+  const completionDiagnostics = tournament
+    ? getTournamentDiagnostics(matches, teams, tournament.format)
+    : null;
+  const computedWinner = tournament
+    ? getTournamentWinner(matches, teams, tournament.format)
+    : null;
+  const debugState = {
+    tournamentId: id,
+    stored: {
+      ended: tournament?.ended ?? null,
+      winner_id: tournament?.winner_id ?? null,
+      format: tournament?.format ?? null,
+    },
+    computedWinner,
+    diagnostics: completionDiagnostics,
+    lastStatusUpdate,
+  };
 
   useEffect(() => {
     // Wait until tournament is loaded so we can check the ended flag
@@ -520,6 +545,12 @@ export default function TournamentRunPage() {
           .update({ ended: false, winner_id: null })
           .eq("id", id)
           .then(({ error }) => {
+            setLastStatusUpdate({
+              action: "clear-ended",
+              ok: !error,
+              error: error?.message,
+              at: new Date().toISOString(),
+            });
             if (error) console.error("Failed to clear tournament winner", error.message);
           });
         setTournament((prev: any) =>
@@ -549,6 +580,12 @@ export default function TournamentRunPage() {
       .update({ ended: true, winner_id: winner })
       .eq("id", id)
       .then(({ error }) => {
+        setLastStatusUpdate({
+          action: "set-ended",
+          ok: !error,
+          error: error?.message,
+          at: new Date().toISOString(),
+        });
         if (error) console.error("Failed to set tournament winner", error.message);
       });
     setTournament((prev: any) =>
@@ -573,6 +610,11 @@ export default function TournamentRunPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">{tournament?.name || "Tournament"} Run</h2>
+      {showDebug && (
+        <pre className="overflow-auto rounded border bg-slate-50 p-3 text-xs text-slate-700">
+          {JSON.stringify(debugState, null, 2)}
+        </pre>
+      )}
       <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 overflow-x-auto">
         <div className="flex space-x-4">
           {rrPhases.map((phase) => (
