@@ -1,8 +1,10 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseBrowser';
 
 export default function CreatePage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [tournament, setTournament] = useState({ name: '', sport: '', teams: [] as { name: string }[] });
   const [loading, setLoading] = useState(false);
@@ -11,7 +13,12 @@ export default function CreatePage() {
     setLoading(true);
     const tournamentId = crypto.randomUUID();
     const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id ?? null;
+    const userId = userData.user?.id;
+
+    if (!userId) {
+      router.push("/login");
+      return;
+    }
 
     const { error: tournamentError } = await supabase.from('tournaments').insert([
       {
@@ -46,7 +53,7 @@ export default function CreatePage() {
 
     const { error: ttError } = await supabase.from('tournament_teams').insert(
       teamIds.map((id) => (
-        userId ? { tournament_id: tournamentId, team_id: id, user_id: userId } : { tournament_id: tournamentId, team_id: id }
+        { tournament_id: tournamentId, team_id: id, user_id: userId }
       ))
     );
     if (ttError) {
@@ -71,8 +78,7 @@ export default function CreatePage() {
     }
 
     setLoading(false);
-    const dest = userId ? `/run/${tournamentId}` : `/public/run/${tournamentId}`;
-    window.location.href = dest;
+    router.push(`/run/${tournamentId}`);
   };
 
   return (

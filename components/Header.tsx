@@ -49,13 +49,18 @@ export default function Header() {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (!data && !error) {
+      if (error) {
+        console.error("get user profile error", error.message);
+        return;
+      }
+
+      if (!data) {
         await supabase.from('user_profiles').insert({
-          id: user.id,
+          user_id: user.id,
           email: user.email,
           created_at: new Date().toISOString(),
           paying_status: 'free',

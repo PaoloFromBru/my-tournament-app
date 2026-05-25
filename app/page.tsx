@@ -8,7 +8,7 @@ export default function Home() {
         </h1>
         <p className="text-xl mb-6 text-gray-600">
           From babyfoot to padel, manage your tournaments like a pro.
-          <br />No sign-up required to get started.
+          <br />Create an account to save and manage your tournaments.
         </p>
         <a
           href="/create"
@@ -73,7 +73,7 @@ export default function Home() {
           Get Started Now
         </h2>
         <p className="text-lg text-gray-700 mb-6">
-          No account needed. Just click and go.
+          Sign in to create, save, and share your tournaments.
         </p>
         <a
           href="/create"
@@ -92,8 +92,8 @@ export default function Home() {
           <div>
             <strong>Do I need to register?</strong>
             <p>
-              No — you can try the app instantly. Login is optional and only
-              needed to save your tournaments.
+              Yes. Creating and managing tournaments requires an account so your
+              data stays tied to you.
             </p>
           </div>
           <div>

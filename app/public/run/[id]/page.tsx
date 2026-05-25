@@ -1,10 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
-import { supabase } from "../../../../lib/supabaseBrowser";
-import { generateNextRoundMatches } from "../../../../utils/scheduleMatches";
-import { logDebug } from "../../../../utils/logger";
+import { supabasePublic } from "../../../../lib/supabasePublic";
 
 interface Match {
   id: string | number;
@@ -26,62 +23,44 @@ export default function TournamentRunPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  // public demo does not use auth, keep user null
-  const [user] = useState<any>(null);
   const [tournament, setTournament] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
   const [celebrated, setCelebrated] = useState(false);
   // ensures initial match generation only happens once
   const initialized = useRef(false);
-
-  useEffect(() => {
-    const cleanup = async () => {
-      try {
-        await fetch('/api/demo-cleanup', { method: 'POST' });
-      } catch (err) {
-        console.error('cleanup failed', err);
-      }
-    };
-    window.addEventListener('beforeunload', cleanup);
-    return () => {
-      cleanup();
-      window.removeEventListener('beforeunload', cleanup);
-    };
-  }, []);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
     const load = async () => {
-      const { data: t } = await supabase
+      const { data: t } = await supabasePublic
         .from("tournaments")
-        .select("*")
+        .select("id, name")
         .eq("id", id)
         .single();
       setTournament(t);
 
-      const { data: matchData } = await supabase
+      const { data: matchData } = await supabasePublic
         .from("matches")
-        .select("*")
+        .select("id, tournament_id, team_a, team_b, phase, scheduled_at, winner, score_a, score_b")
         .eq("tournament_id", id);
 
-      const { data: ttData } = await supabase
+      const { data: ttData } = await supabasePublic
         .from("tournament_teams")
         .select("team_id")
         .eq("tournament_id", id);
       let teamIds = (ttData || []).map((tt: any) => tt.team_id);
       let teamsConverted: Team[] = [];
       if (teamIds.length) {
-        const { data: teamData } = await supabase
+        const { data: teamData } = await supabasePublic
           .from("teams")
           .select("id, name")
           .in("id", teamIds);
         teamsConverted = teamData || [];
       } else {
-        const { data: teamData } = await supabase
+        const { data: teamData } = await supabasePublic
           .from("teams")
           .select("id, name")
           .eq("tournament_id", id);
@@ -89,45 +68,8 @@ export default function TournamentRunPage() {
         teamIds = teamsConverted.map((t) => t.id);
       }
 
-      let matchesList = matchData || [];
-      if (matchesList.length === 0 && teamsConverted.length) {
-        const pairs: { team_a: string; team_b: string | null }[] = [];
-        for (let i = 0; i < teamsConverted.length; i += 2) {
-          pairs.push({
-            team_a: String(teamsConverted[i].id),
-            team_b:
-              teamsConverted[i + 1] !== undefined
-                ? String(teamsConverted[i + 1].id)
-                : null,
-          });
-        }
-        if (pairs.length) {
-          await supabase.from("matches").insert(
-            pairs.map((p) => ({
-              ...p,
-              phase: "round1",
-              scheduled_at: null,
-              tournament_id: id,
-              user_id: null,
-            }))
-          );
-          const { data: newMatches } = await supabase
-            .from("matches")
-            .select("*")
-            .eq("tournament_id", id)
-            .is("user_id", null);
-          matchesList = newMatches || [];
-        }
-      }
-
-      setMatches(matchesList);
+      setMatches(matchData || []);
       setTeams(teamsConverted);
-
-      const initial: Record<string, { a: number; b: number }> = {};
-      matchesList.forEach((m) => {
-        initial[String(m.id)] = { a: m.score_a || 0, b: m.score_b || 0 };
-      });
-      setScores(initial);
     };
     load();
   }, [id]);
@@ -152,133 +94,11 @@ export default function TournamentRunPage() {
     setTimeout(() => container.remove(), 5000);
   };
 
-  const nextRound = async () => {
-    const koMatches = matches.filter((m) => m.phase.startsWith("round"));
-    if (koMatches.length === 0) return;
-
-    const phaseNums = koMatches.map((m) => parseInt(m.phase.replace(/\D/g, "")) || 1);
-    const currentRound = Math.max(...phaseNums);
-    const currentMatches = koMatches.filter(
-      (m) => parseInt(m.phase.replace(/\D/g, "")) === currentRound
-    );
-    const winners = currentMatches
-      .map((m) => m.winner)
-      .filter((w): w is string => Boolean(w));
-    logDebug('nextRound winners', winners);
-    if (winners.length !== currentMatches.length) return;
-
-    if (winners.length === 1) {
-      triggerConfetti();
-      return;
-    }
-
-    const pairings = generateNextRoundMatches(winners);
-    logDebug('nextRound pairings', pairings);
-    const nextRoundNum = currentRound + 1;
-    if (pairings.length) {
-      await supabase.from("matches").insert(
-        pairings.map((p) => ({
-          team_a: p.team_a,
-          team_b: p.team_b,
-          winner: p.winner ?? null,
-          phase: `round${nextRoundNum}`,
-          scheduled_at: null,
-          tournament_id: id,
-          user_id: user?.id ?? null,
-        }))
-      );
-      logDebug('nextRound inserted', pairings)
-      const { data: newMatches } = await supabase
-        .from("matches")
-        .select("*")
-        .eq("tournament_id", id);
-      setMatches(newMatches || []);
-
-      const initial = { ...scores };
-      (newMatches || []).forEach((m) => {
-        if (!initial[String(m.id)]) {
-          initial[String(m.id)] = { a: m.score_a || 0, b: m.score_b || 0 };
-        }
-      });
-      setScores(initial);
-    }
-  };
-
-  const saveResult = async (m: Match) => {
-    const sc = scores[String(m.id)] || { a: 0, b: 0 };
-    const winner = sc.a === sc.b ? null : sc.a > sc.b ? m.team_a : m.team_b;
-    let updateQuery = supabase
-      .from("matches")
-      .update({ winner, score_a: sc.a, score_b: sc.b })
-      .eq("id", m.id);
-    updateQuery = user
-      ? updateQuery.eq("user_id", user.id)
-      : updateQuery.is("user_id", null);
-    await updateQuery;
-    setMatches((prev) =>
-      prev.map((mt) =>
-        mt.id === m.id ? { ...mt, winner, score_a: sc.a, score_b: sc.b } : mt
-      )
-    );
-  };
-
-  const updateScore = async (
-    m: Match,
-    field: "a" | "b",
-    value: number
-  ) => {
-    const current = scores[String(m.id)] || { a: m.score_a || 0, b: m.score_b || 0 };
-    const updated = {
-      ...current,
-      [field]: value,
-    } as { a: number; b: number };
-    setScores((prev) => ({
-      ...prev,
-      [String(m.id)]: updated,
-    }));
-
-    let scoreQuery = supabase
-      .from("matches")
-      .update({
-        score_a: updated.a,
-        score_b: updated.b,
-      })
-      .eq("id", m.id);
-    scoreQuery = user
-      ? scoreQuery.eq("user_id", user.id)
-      : scoreQuery.is("user_id", null);
-    await scoreQuery;
-    setMatches((prev) =>
-      prev.map((mt) =>
-        mt.id === m.id
-          ? { ...mt, score_a: updated.a, score_b: updated.b }
-          : mt
-      )
-    );
-  };
-
   const phases = Array.from(new Set(matches.map((m) => m.phase))).sort(
     (a, b) =>
       (parseInt(a.replace(/\D/g, "")) || 0) -
       (parseInt(b.replace(/\D/g, "")) || 0)
   );
-
-  const koPhaseNums = matches
-    .filter((m) => m.phase.startsWith('round'))
-    .map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
-  const currentRound = koPhaseNums.length ? Math.max(...koPhaseNums) : 0;
-  const currentMatches = matches.filter(
-    (m) =>
-      m.phase.startsWith('round') &&
-      (parseInt(m.phase.replace(/\D/g, "")) || 0) === currentRound
-  );
-  const allDone = currentMatches.length > 0 && currentMatches.every((m) => m.winner);
-  const hasNext = matches.some(
-    (m) =>
-      m.phase.startsWith('round') &&
-      (parseInt(m.phase.replace(/\D/g, "")) || 0) === currentRound + 1
-  );
-  const canAdvance = allDone && !hasNext && currentMatches.length > 1;
 
   useEffect(() => {
     if (celebrated) return;
@@ -314,40 +134,12 @@ export default function TournamentRunPage() {
                   >
                     <div className="flex justify-between items-center">
                       <span>{teamName(m.team_a)}</span>
-                      <input
-                        type="number"
-                        className="w-12 border"
-                        value={scores[String(m.id)]?.a ?? 0}
-                        onChange={(e) =>
-                          updateScore(
-                            m,
-                            "a",
-                            Number(e.target.value)
-                          )
-                        }
-                      />
+                      <span className="font-semibold">{m.score_a ?? 0}</span>
                     </div>
                     <div className="flex justify-between items-center mt-1">
                       <span>{teamName(m.team_b)}</span>
-                      <input
-                        type="number"
-                        className="w-12 border"
-                        value={scores[String(m.id)]?.b ?? 0}
-                        onChange={(e) =>
-                          updateScore(
-                            m,
-                            "b",
-                            Number(e.target.value)
-                          )
-                        }
-                      />
+                      <span className="font-semibold">{m.score_b ?? 0}</span>
                     </div>
-                    <button
-                      className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white py-0.5 rounded"
-                      onClick={() => saveResult(m)}
-                    >
-                      Save Result
-                    </button>
                     {m.winner && (
                       <p className="text-center mt-1 text-green-700 dark:text-green-300 font-medium">
                         Winner: {teamName(m.winner)}
@@ -359,11 +151,6 @@ export default function TournamentRunPage() {
           </div>
         ))}
       </div>
-      {canAdvance && (
-        <Button className="bg-blue-500 hover:bg-blue-600" onClick={nextRound}>
-          Next Round
-        </Button>
-      )}
     </div>
   );
 }

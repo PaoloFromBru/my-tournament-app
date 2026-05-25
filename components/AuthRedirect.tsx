@@ -8,7 +8,6 @@ export default function AuthRedirect({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const isPublic =
     pathname === "/" ||
-    pathname === "/create" ||
     pathname === "/demo" ||
     pathname === "/login" ||
     pathname === "/register" ||

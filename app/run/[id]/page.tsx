@@ -22,6 +22,71 @@ interface Team {
   name: string;
 }
 
+const knockoutRoundNumber = (phase: string) => {
+  if (!phase.toLowerCase().startsWith("round")) return null;
+  return parseInt(phase.replace(/\D/g, ""), 10) || 0;
+};
+
+const hasWinner = (match: Match) =>
+  match.winner !== null && match.winner !== undefined && match.winner !== "";
+
+const isRoundRobinTournament = (format?: string) => {
+  const normalized = format?.toLowerCase() || "";
+  return normalized === "round_robin" || normalized.includes("italian");
+};
+
+const expectedFinalRound = (teamCount: number, format?: string) => {
+  if (teamCount < 2) return 0;
+
+  if (isRoundRobinTournament(format)) {
+    let knockoutTeams = 2;
+    const maxTeams = Math.min(teamCount, 8);
+    while (knockoutTeams * 2 <= maxTeams) {
+      knockoutTeams *= 2;
+    }
+    return Math.ceil(Math.log2(knockoutTeams));
+  }
+
+  return Math.ceil(Math.log2(teamCount));
+};
+
+const getTournamentWinner = (
+  matches: Match[],
+  teams: Team[],
+  format?: string
+) => {
+  if (matches.length === 0 || teams.length < 2) return null;
+
+  if (isRoundRobinTournament(format)) {
+    const rrMatches = matches.filter((m) => knockoutRoundNumber(m.phase) === null);
+    const expectedRoundRobinMatches = (teams.length * (teams.length - 1)) / 2;
+    const roundRobinComplete =
+      expectedRoundRobinMatches > 0 &&
+      rrMatches.length >= expectedRoundRobinMatches &&
+      rrMatches.every(hasWinner);
+
+    if (!roundRobinComplete) return null;
+  }
+
+  const knockoutMatches = matches.filter((m) => knockoutRoundNumber(m.phase) !== null);
+  if (knockoutMatches.length === 0) return null;
+
+  const maxRound = Math.max(
+    ...knockoutMatches.map((m) => knockoutRoundNumber(m.phase) ?? 0)
+  );
+  if (maxRound < expectedFinalRound(teams.length, format)) return null;
+
+  const finals = knockoutMatches.filter((m) => knockoutRoundNumber(m.phase) === maxRound);
+  if (finals.length !== 1 || !hasWinner(finals[0])) return null;
+
+  const priorRoundsComplete = knockoutMatches.every((m) => {
+    const roundNumber = knockoutRoundNumber(m.phase) ?? 0;
+    return roundNumber >= maxRound || hasWinner(m);
+  });
+
+  return priorRoundsComplete ? String(finals[0].winner) : null;
+};
+
 export default function TournamentRunPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -219,6 +284,14 @@ export default function TournamentRunPage() {
   };
 
   const generateKnockout = async () => {
+    // Reset the ended flag so the public page shows "in progress" again
+    // until the new knockout final is decided.
+    await supabase
+      .from('tournaments')
+      .update({ ended: false, winner_id: null })
+      .eq('id', id);
+    setCelebrated(false);
+
     const knockoutCount = (total: number) => {
       let count = 2;
       while (count * 2 <= total && count < 8) {
@@ -336,25 +409,48 @@ export default function TournamentRunPage() {
   const canAdvance = allDone && !hasNext && currentMatches.length > 1;
 
   useEffect(() => {
-    if (celebrated) return;
-    const phaseNumsLocal = matches
-      .filter((m) => m.phase.startsWith('round'))
-      .map((m) => parseInt(m.phase.replace(/\D/g, "")) || 0);
-    const maxRound = Math.max(...phaseNumsLocal, 1);
-    const finalMatches = matches.filter(
-      (m) =>
-        m.phase.startsWith('round') &&
-        (parseInt(m.phase.replace(/\D/g, "")) || 0) === maxRound
-    );
-    if (
-      finalMatches.length === 1 &&
-      finalMatches[0].winner &&
-      finalMatches[0].phase.startsWith('round')
-    ) {
-      triggerConfetti();
-      setCelebrated(true);
+    // Wait until tournament is loaded so we can check the ended flag
+    if (!tournament) return;
+
+    const winner = getTournamentWinner(matches, teams, tournament.format);
+
+    if (!winner) {
+      if (tournament.ended || tournament.winner_id) {
+        supabase
+          .from("tournaments")
+          .update({ ended: false, winner_id: null })
+          .eq("id", id)
+          .then(({ error }) => {
+            if (error) console.error("Failed to clear tournament winner", error.message);
+          });
+        setTournament((prev: any) =>
+          prev ? { ...prev, ended: false, winner_id: null } : prev
+        );
+      }
+      setCelebrated(false);
+      return;
     }
-  }, [matches, celebrated]);
+
+    if (tournament.ended && tournament.winner_id === winner) {
+      if (!celebrated) setCelebrated(true);
+      return;
+    }
+
+    if (!celebrated) {
+      triggerConfetti();
+    }
+    setCelebrated(true);
+    supabase
+      .from("tournaments")
+      .update({ ended: true, winner_id: winner })
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.error("Failed to set tournament winner", error.message);
+      });
+    setTournament((prev: any) =>
+      prev ? { ...prev, ended: true, winner_id: winner } : prev
+    );
+  }, [matches, teams, tournament, celebrated, id]);
 
   useEffect(() => {
     if (!tournament || tournament.format !== 'round_robin') return;

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseBrowser';
+import { supabasePublic } from '@/lib/supabasePublic';
 
 export default function DemoPage() {
   const [tournament, setTournament] = useState<any | null>(null);
@@ -8,16 +8,16 @@ export default function DemoPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: t } = await supabase
+      const { data: t } = await supabasePublic
         .from('tournaments')
-        .select('*')
+        .select('id, name, sport')
         .eq('id', 'a073d974-4da1-4fd1-a026-3db7a9bebca0')
         .single();
       setTournament(t);
 
-      const { data: teamData } = await supabase
+      const { data: teamData } = await supabasePublic
         .from('teams')
-        .select('*')
+        .select('id, name, tournament_id')
         .eq('tournament_id', t?.id);
       setTeams(teamData || []);
     };

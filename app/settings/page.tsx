@@ -121,14 +121,20 @@ export default function SettingsPage() {
         return;
       }
 
-      // If the CSV header defines the skills, update the sport info so
-      // the Players view knows about them
       if (header.length) {
-        await supabase
-          .from("sports")
-          .update({ skills })
-          .eq("id", selectedSportId);
-        setSportSkills(skills);
+        const expected = sportSkills.map((skill) => skill.toLowerCase());
+        const received = skills.map((skill) => skill.toLowerCase());
+        const matchesSportSkills =
+          expected.length === received.length &&
+          expected.every((skill, index) => skill === received[index]);
+
+        if (!matchesSportSkills) {
+          setImportMessage({
+            ok: false,
+            text: "CSV skill columns must match the selected sport.",
+          });
+          return;
+        }
       }
 
       const players: { name: string; user_id: string }[] = [];
@@ -200,36 +206,6 @@ export default function SettingsPage() {
     await supabase.from("teams").delete().eq("user_id", user.id);
     await supabase.from("players").delete().eq("user_id", user.id);
     alert("All data deleted.");
-  };
-
-  const cleanupDatabase = async () => {
-    if (
-      !confirm(
-        "Remove all records without a user? This cannot be undone."
-      )
-    )
-      return;
-
-    const tables = [
-      "matches",
-      "team_players",
-      "teams",
-      "tournaments",
-      "players",
-    ];
-
-    for (const table of tables) {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .is("user_id", null);
-      if (error) {
-        alert(`Failed cleaning ${table}: ${error.message}`);
-        return;
-      }
-    }
-
-    alert("Database cleanup complete.");
   };
 
   if (sportLoading) return <p className="p-4">Loading settings...</p>;
@@ -343,9 +319,6 @@ export default function SettingsPage() {
         <div className="flex space-x-2">
           <Button variant="destructive" onClick={deleteAllData}>
             Delete My Data
-          </Button>
-          <Button variant="destructive" onClick={cleanupDatabase}>
-            Database cleanup
           </Button>
         </div>
       </section>
